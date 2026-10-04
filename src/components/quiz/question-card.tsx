@@ -16,25 +16,49 @@ import { MultipleChoiceOptions } from "./multiple-choice-options";
 
 interface QuestionCardProps {
   question: QuizQuestionView;
-  /** True once every question in the quiz has been answered. */
-  isLast: boolean;
+  /** The learner's unsent answer (kept by the player across navigation). */
+  draft: string;
+  onDraftChange: (value: string) => void;
+  /** Time already spent on this question during earlier visits. */
+  getTimeSpent: (questionId: string) => number;
+  onTimeSpent: (questionId: string, ms: number) => void;
   onAnswered: (result: AnswerResultView) => void;
+  /** Null on the first question. */
+  onPrevious: (() => void) | null;
+  onSkip: () => void;
   onNext: () => void;
+  isLastQuestion: boolean;
 }
 
-export function QuestionCard({ question, isLast, onAnswered, onNext }: QuestionCardProps) {
-  const [answer, setAnswer] = useState("");
+export function QuestionCard({
+  question,
+  draft: answer,
+  onDraftChange: setAnswer,
+  getTimeSpent,
+  onTimeSpent,
+  onAnswered,
+  onPrevious,
+  onSkip,
+  onNext,
+  isLastQuestion,
+}: QuestionCardProps) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const shownAtRef = useRef(0);
+  const answeredRef = useRef(Boolean(question.result));
   const headingRef = useRef<HTMLHeadingElement>(null);
   const nextButtonRef = useRef<HTMLButtonElement>(null);
   const result = question.result;
+  const questionId = question.id;
 
+  // Track time on screen; time from earlier visits is added when answering.
   useEffect(() => {
     shownAtRef.current = Date.now();
     headingRef.current?.focus();
-  }, []);
+    return () => {
+      if (!answeredRef.current) onTimeSpent(questionId, Date.now() - shownAtRef.current);
+    };
+  }, [questionId, onTimeSpent]);
 
   useEffect(() => {
     if (result) nextButtonRef.current?.focus();
@@ -43,14 +67,15 @@ export function QuestionCard({ question, isLast, onAnswered, onNext }: QuestionC
   function submit() {
     if (pending || result || !answer.trim()) return;
     setError(null);
+    const timeTakenMs = getTimeSpent(questionId) + (Date.now() - shownAtRef.current);
     startTransition(async () => {
-      const response = await submitAnswerAction({
-        questionId: question.id,
-        answer,
-        timeTakenMs: Date.now() - shownAtRef.current,
-      });
-      if (response.ok) onAnswered(response.data.result);
-      else setError(response.error);
+      const response = await submitAnswerAction({ questionId, answer, timeTakenMs });
+      if (response.ok) {
+        answeredRef.current = true;
+        onAnswered(response.data.result);
+      } else {
+        setError(response.error);
+      }
     });
   }
 
@@ -62,6 +87,11 @@ export function QuestionCard({ question, isLast, onAnswered, onNext }: QuestionC
   }
 
   const isTextAnswer = question.type !== "multiple_choice";
+  const previousButton = onPrevious && (
+    <Button variant="ghost" size="lg" onClick={onPrevious} disabled={pending}>
+      ← Previous
+    </Button>
+  );
 
   return (
     <article className="space-y-5 rounded-2xl border border-border bg-surface p-5 sm:p-7">
@@ -102,7 +132,7 @@ export function QuestionCard({ question, isLast, onAnswered, onNext }: QuestionC
             result={result}
             disabled={pending || Boolean(result)}
           />
-        ) : (
+        ) : result?.skipped ? null : (
           <div className="space-y-1.5">
             <label htmlFor={`answer-${question.id}`} className="text-sm font-medium">
               {question.type === "code_output" ? "Exact output" : "Your answer"}
@@ -138,10 +168,14 @@ export function QuestionCard({ question, isLast, onAnswered, onNext }: QuestionC
         {error && <Alert>{error}</Alert>}
 
         {!result && (
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {previousButton}
             <Button type="submit" size="lg" disabled={pending || !answer.trim()}>
               {pending && <Spinner />}
               {pending ? (isTextAnswer ? "Grading…" : "Checking…") : "Submit answer"}
+            </Button>
+            <Button variant="secondary" size="lg" onClick={onSkip} disabled={pending}>
+              Skip for now
             </Button>
             {pending && question.type === "short_answer" && (
               <span className="text-sm text-muted" aria-live="polite">
@@ -155,9 +189,12 @@ export function QuestionCard({ question, isLast, onAnswered, onNext }: QuestionC
       {result && (
         <>
           <AnswerFeedback result={result} showCorrectAnswer={isTextAnswer} />
-          <Button ref={nextButtonRef} size="lg" onClick={onNext}>
-            {isLast ? "See results" : "Next question"}
-          </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            {previousButton}
+            <Button ref={nextButtonRef} size="lg" onClick={onNext}>
+              {isLastQuestion ? "Finish" : "Next question →"}
+            </Button>
+          </div>
         </>
       )}
     </article>

@@ -15,6 +15,13 @@
       "when": 1791111379313,
       "tag": "0001_subtopics",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791128529262,
+      "tag": "0002_attempt_skipped",
+      "breakpoints": true
     }
   ]
 }

@@ -77,6 +77,8 @@ export interface AnswerResultView {
   answer: string;
   score: number;
   isCorrect: boolean;
+  /** The learner finished the quiz without answering this question. */
+  skipped: boolean;
   feedback: string;
   explanation: string;
   correctAnswer: string;

@@ -88,6 +88,16 @@ one concept. The focus is checked to belong to the topic, then the same weakest-
 runs over that subtopic's or concept's questions. Generated questions about any other concept
 are discarded.
 
+**Skip and finish:** skipping is navigation only; nothing is stored, and the question stays
+unanswered so the learner can return to it. Finishing a quiz with unanswered questions records
+each one as a `skipped` attempt (score 0, answer revealed) and completes the quiz in one
+transaction. Skipped attempts count toward mastery and accuracy as gaps.
+
+**Lessons:** the reading prompt receives the concept, its subtopic, the up-to-four concepts that
+precede it in the curriculum (as prerequisites) and its other subtopic siblings (as related
+concepts), and asks for a plain-language lesson with a fixed section structure and at least
+three worked examples.
+
 **Answer:** multiple-choice and code-output questions are graded locally and deterministically.
 Short answers are graded by Claude against the stored rubric. The attempt and, when it was the
 last question, the quiz completion are written in one transaction.

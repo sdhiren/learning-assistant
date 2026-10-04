@@ -18,13 +18,19 @@ rather than a separate API bill.
 - **Your own subtopics.** Add a subtopic to any topic (for example "Node.js event loop
   phases"). Claude breaks it into concepts that don't duplicate your existing skill map, and you
   can quiz on the whole subtopic or any of its concepts.
+- **Move freely through a quiz.** Skip a question and come back to it, go back to earlier
+  questions, or jump to any question from the navigator. Unsent answers are kept. Questions still
+  unanswered when you finish are marked "Skipped", reveal their answer, and count as gaps to
+  practise.
 - **Adaptive targeting.** By default each quiz focuses on your weakest and not-yet-practised
   concepts. You can also focus a quiz on one subtopic or drill a single concept.
 - **Progress tracking.** Mastery per concept (weighted toward harder questions and recent
   answers), topic progress, accuracy, a score trend and quiz history. You can pick up any topic
   or unfinished quiz where you left off.
-- **Lessons.** An interview-focused reading for each concept, covering the core idea, how it
-  works, an example, common pitfalls and how interviewers probe it.
+- **Lessons.** A plain-language reading for each concept that builds a clear mental model: the
+  big idea with an analogy, the prerequisite concepts it builds on, a step-by-step walkthrough,
+  at least three worked examples, how it relates to neighbouring concepts, common
+  misconceptions, how interviewers test it, and self-check questions.
 
 ## Quick start
 

@@ -91,3 +91,5 @@ export const submitAnswerInput = z.object({
   timeTakenMs: z.number().int().min(0).max(MAX_ANSWER_TIME_MS).catch(0),
 });
 export type SubmitAnswerInput = z.infer<typeof submitAnswerInput>;
+
+export const finishQuizInput = z.object({ quizId: id });

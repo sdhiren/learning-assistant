@@ -152,22 +152,85 @@ export function buildShortAnswerGradingPrompt(input: {
   };
 }
 
+export interface RelatedConcept {
+  name: string;
+  summary: string;
+}
+
+/** A teacher who explains for understanding, not for show. */
+const TEACHER_PERSONA =
+  "You are a patient, expert teacher who explains technical ideas so clearly that a " +
+  "motivated beginner understands them on first read, while staying precise enough for an " +
+  "experienced engineer preparing for interviews.";
+
 export function buildReadingPrompt(input: {
   topicName: string;
   goal: string;
+  subtopicName: string;
   conceptName: string;
   conceptSummary: string;
+  /** Other concepts in the same subtopic: explain how this one relates to them. */
+  siblingConcepts: readonly RelatedConcept[];
+  /** Concepts that come just before this one in the curriculum (likely prerequisites). */
+  prerequisiteConcepts: readonly RelatedConcept[];
 }): Prompt {
+  const describe = (concepts: readonly RelatedConcept[]) =>
+    concepts.map((concept) => `- ${concept.name}: ${concept.summary}`).join("\n");
+
   return {
-    systemPrompt: `${PERSONA}\n\n${DATA_HANDLING_RULE}`,
+    systemPrompt: `${TEACHER_PERSONA}\n\n${DATA_HANDLING_RULE}`,
     prompt: [
-      "Write a focused interview-prep lesson on one concept.",
+      "Write a lesson that gives the learner a correct, durable mental model of one concept.",
       tagged("topic", input.topicName),
       input.goal ? tagged("learner_goal", input.goal) : "",
+      tagged("subtopic", input.subtopicName),
       tagged("concept", `${input.conceptName}: ${input.conceptSummary}`),
-      "Structure (use ## headings): Core idea, How it works, Example (with a code block if relevant), " +
-        "Common pitfalls, How interviewers probe this.",
-      "Keep it to roughly 400 to 700 words. Be precise; no filler.",
+      input.prerequisiteConcepts.length > 0
+        ? tagged("builds_on", describe(input.prerequisiteConcepts))
+        : "",
+      input.siblingConcepts.length > 0
+        ? tagged("related_concepts", describe(input.siblingConcepts))
+        : "",
+      `Writing style:
+- Use very simple, everyday language. Short sentences. One idea per paragraph.
+- Explain every technical term in plain words the first time you use it.
+- Speak to the reader as "you". Be friendly and direct; no filler or hype.
+- Build understanding step by step: what problem this solves, then how it works, then the details.
+- Prefer concrete examples over abstract statements. Show, then explain.`,
+      `Structure (use these ## headings, in this order):
+## The big idea
+In 2 to 4 sentences, say what this is and why it exists. Then give an everyday analogy that \
+maps onto how it really works, and say where the analogy stops being accurate.
+
+## Concepts you need first
+Briefly explain, in plain words, each idea from <builds_on> that this concept depends on, and \
+exactly how it connects. Skip this section only if nothing is listed.
+
+## How it works, step by step
+Break the concept into its key parts. For each part: a short plain explanation, then a small \
+concrete example. Describe what happens in order, as if tracing it by hand.
+
+## Examples
+At least three examples that build in difficulty: a minimal one, a realistic one, and one \
+that shows a tricky case or edge case. Use code blocks with a language tag where code helps, \
+keep code short, and walk through each example in plain words (what happens and why). For \
+non-code topics, use concrete scenarios instead.
+
+## How it fits with related concepts
+For each concept in <related_concepts>, one or two sentences on how it relates to this one \
+(how they differ, when you'd use which, or how they work together). Skip if none are listed.
+
+## Common mistakes and misconceptions
+The wrong mental models people actually have, why they are wrong, and the correct view.
+
+## How interviewers test this
+Typical questions or follow-ups, and what a strong answer covers.
+
+## Check your understanding
+Two or three short questions the reader should now be able to answer, each followed by its \
+answer on the next line, starting with "Answer:".`,
+      "Length: roughly 900 to 1,500 words. Accuracy matters more than length; never invent " +
+        "facts, APIs or behaviour you are unsure about.",
     ]
       .filter(Boolean)
       .join("\n\n"),
