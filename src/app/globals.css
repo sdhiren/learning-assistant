@@ -1,0 +1,101 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/*
+ * Design tokens. Components use these semantic names (bg-surface, text-muted,
+ * bg-accent...) rather than raw palette colours, so light and dark themes stay
+ * consistent and can be tuned in one place.
+ */
+:root {
+  --color-canvas: #f7f6f3;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f1efea;
+  --color-border: #e3e0d8;
+  /* Form-control outlines: at least 3:1 against surfaces (WCAG 1.4.11). */
+  --color-border-strong: #8a857a;
+  --color-ink: #1c1b19;
+  --color-muted: #6b675e;
+  --color-accent: #4f46e5;
+  --color-accent-hover: #4338ca;
+  --color-accent-soft: #eef0ff;
+  --color-on-accent: #ffffff;
+  --color-success: #15803d;
+  --color-success-soft: #ecfdf3;
+  --color-warning: #b45309;
+  --color-warning-soft: #fff7e8;
+  --color-danger: #be123c;
+  --color-danger-soft: #fff1f3;
+  --color-code-bg: #1e1e2a;
+  --color-code-ink: #e7e6f3;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-canvas: #121211;
+    --color-surface: #1b1a19;
+    --color-surface-muted: #242321;
+    --color-border: #34322e;
+    --color-border-strong: #76716a;
+    --color-ink: #f0eee9;
+    --color-muted: #a8a399;
+    --color-accent: #8b8cf8;
+    --color-accent-hover: #a5a6fb;
+    --color-accent-soft: #24244a;
+    --color-on-accent: #11111f;
+    --color-success: #4ade80;
+    --color-success-soft: #13291b;
+    --color-warning: #fbbf24;
+    --color-warning-soft: #2e2410;
+    --color-danger: #fb7185;
+    --color-danger-soft: #34151c;
+    --color-code-bg: #0d0d14;
+    --color-code-ink: #e7e6f3;
+  }
+}
+
+@theme inline {
+  --color-canvas: var(--color-canvas);
+  --color-surface: var(--color-surface);
+  --color-surface-muted: var(--color-surface-muted);
+  --color-border: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+  --color-ink: var(--color-ink);
+  --color-muted: var(--color-muted);
+  --color-accent: var(--color-accent);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-accent-soft: var(--color-accent-soft);
+  --color-on-accent: var(--color-on-accent);
+  --color-success: var(--color-success);
+  --color-success-soft: var(--color-success-soft);
+  --color-warning: var(--color-warning);
+  --color-warning-soft: var(--color-warning-soft);
+  --color-danger: var(--color-danger);
+  --color-danger-soft: var(--color-danger-soft);
+  --color-code-bg: var(--color-code-bg);
+  --color-code-ink: var(--color-code-ink);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

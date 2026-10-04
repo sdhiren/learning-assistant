@@ -1,0 +1,7 @@
+.next
+node_modules
+data
+drizzle/meta
+package-lock.json
+next-env.d.ts
+AGENTS.md
