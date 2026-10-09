@@ -199,8 +199,72 @@ describe("QuizService", () => {
       await expect(answer(questions[0]!.id, "1")).rejects.toBeInstanceOf(ConflictError);
     });
 
+    it("lets earlier skipped questions be answered later, in any order", async () => {
+      const quizId = await startQuiz(
+        conceptIds.slice(0, 3).map((id) => multipleChoiceQuestion(id)),
+      );
+      const [first, second, third] = app.quizzes.getQuizSession(quizId).questions;
+      await answer(third!.id, "1");
+      await answer(first!.id, "1");
+      const { quizCompleted } = await answer(second!.id, "0");
+      expect(quizCompleted).toBe(true);
+    });
+
     it("reports unknown questions as not found", async () => {
       await expect(answer(randomUUID(), "1")).rejects.toBeInstanceOf(NotFoundError);
+    });
+  });
+
+  describe("finishQuiz", () => {
+    it("records unanswered questions as skipped, reveals their answers and completes the quiz", async () => {
+      const quizId = await startQuiz(
+        conceptIds.slice(0, 4).map((id) => multipleChoiceQuestion(id)),
+      );
+      const [first] = app.quizzes.getQuizSession(quizId).questions;
+      await answer(first!.id, "1");
+
+      const session = app.quizzes.finishQuiz(quizId);
+
+      expect(session).toMatchObject({ status: "completed", score: 0.25 });
+      const skipped = session.questions.slice(1).map((question) => question.result);
+      expect(skipped).toHaveLength(3);
+      for (const result of skipped) {
+        expect(result).toMatchObject({
+          skipped: true,
+          isCorrect: false,
+          score: 0,
+          answer: "",
+          correctAnswer: "Promise.then",
+        });
+      }
+      expect(session.questions[0]!.result).toMatchObject({ skipped: false, isCorrect: true });
+    });
+
+    it("counts skipped questions as gaps in mastery and accuracy", async () => {
+      const quizId = await startQuiz(
+        conceptIds.slice(0, 3).map((id) => multipleChoiceQuestion(id)),
+      );
+      app.quizzes.finishQuiz(quizId);
+
+      const overview = app.topics.getTopicOverview(topicId);
+      expect(overview.stats).toMatchObject({ answeredQuestionCount: 3, accuracy: 0 });
+      const skippedConcept = overview.subtopics[0]!.concepts[0]!;
+      expect(skippedConcept.mastery).toMatchObject({ level: "weak", score: 0 });
+    });
+
+    it("refuses to finish a quiz twice or to answer after finishing", async () => {
+      const quizId = await startQuiz(
+        conceptIds.slice(0, 3).map((id) => multipleChoiceQuestion(id)),
+      );
+      const [first] = app.quizzes.getQuizSession(quizId).questions;
+      app.quizzes.finishQuiz(quizId);
+
+      expect(() => app.quizzes.finishQuiz(quizId)).toThrow(ConflictError);
+      await expect(answer(first!.id, "1")).rejects.toBeInstanceOf(ConflictError);
+    });
+
+    it("reports unknown quizzes as not found", () => {
+      expect(() => app.quizzes.finishQuiz(randomUUID())).toThrow(NotFoundError);
     });
   });
 });

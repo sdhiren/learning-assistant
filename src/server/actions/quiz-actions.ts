@@ -3,9 +3,9 @@
 import { redirect } from "next/navigation";
 
 import type { ActionResult } from "@/lib/action-result";
-import { startQuizInput, submitAnswerInput } from "@/domain/input-schemas";
+import { finishQuizInput, startQuizInput, submitAnswerInput } from "@/domain/input-schemas";
 import { getServices } from "@/server/container";
-import type { SubmitAnswerResultView } from "@/server/services/view-models";
+import type { QuizSessionView, SubmitAnswerResultView } from "@/server/services/view-models";
 
 import { runAction } from "./run-action";
 
@@ -34,5 +34,12 @@ export async function submitAnswerAction(input: {
 }): Promise<ActionResult<SubmitAnswerResultView>> {
   return runAction("submitAnswer", () =>
     getServices().quizzes.submitAnswer(submitAnswerInput.parse(input)),
+  );
+}
+
+/** Finishes the quiz, recording any unanswered questions as skipped. */
+export async function finishQuizAction(quizId: string): Promise<ActionResult<QuizSessionView>> {
+  return runAction("finishQuiz", () =>
+    getServices().quizzes.finishQuiz(finishQuizInput.parse({ quizId }).quizId),
   );
 }

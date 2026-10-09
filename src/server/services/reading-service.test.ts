@@ -42,6 +42,29 @@ describe("ReadingService", () => {
     });
   });
 
+  it("asks for a simple, example-rich lesson that connects prerequisites and related concepts", async () => {
+    // "ES modules" is in the second subtopic; "CommonJS" is its sibling, and the
+    // two "Runtime" concepts precede it in the curriculum.
+    const target = app.topics.getTopicOverview(topicId).subtopics[1]!.concepts[1]!;
+    app.llm.respondTo("generate-reading", {
+      markdown: "## The big idea\nText",
+      keyTakeaways: ["a", "b", "c"],
+    });
+
+    await app.readings.generateReading(topicId, target.id);
+
+    const request = app.llm.requestsFor("generate-reading")[0]!;
+    expect(request.prompt).toContain("<concept>\nES modules: import semantics.\n</concept>");
+    expect(request.prompt).toContain("<subtopic>\nModules\n</subtopic>");
+    expect(request.prompt).toMatch(
+      /<builds_on>[\s\S]*- Event loop[\s\S]*- CommonJS[\s\S]*<\/builds_on>/,
+    );
+    // CommonJS is already a prerequisite, so it isn't repeated as a related concept.
+    expect(request.prompt).not.toContain("<related_concepts>\n");
+    expect(request.prompt).toContain("very simple, everyday language");
+    expect(request.prompt).toContain("At least three examples");
+  });
+
   it("refuses a concept requested through a different topic", async () => {
     app.llm.respondTo("generate-skill-tree", SAMPLE_SKILL_TREE);
     const otherTopicId = await app.topics.createTopic({ name: "Deno", goal: "" });

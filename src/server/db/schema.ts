@@ -132,6 +132,8 @@ export const attempts = sqliteTable("attempts", {
   answer: text("answer").notNull(),
   score: real("score").notNull(),
   isCorrect: integer("is_correct", { mode: "boolean" }).notNull(),
+  /** True when the learner finished the quiz without answering (scored 0). */
+  skipped: integer("skipped", { mode: "boolean" }).notNull().default(false),
   feedback: text("feedback").notNull(),
   timeTakenMs: integer("time_taken_ms").notNull(),
   answeredAt: timestamp("answered_at").notNull(),

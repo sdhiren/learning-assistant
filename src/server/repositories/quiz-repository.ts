@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNull } from "drizzle-orm";
 
 import type { Difficulty } from "@/domain/difficulty";
 import type { AppDatabase } from "@/server/db/client";
@@ -123,27 +123,42 @@ export class QuizRepository {
   recordAttempt(attempt: NewAttempt, quizId: string, answeredAt: Date): boolean {
     return this.db.transaction((tx) => {
       tx.insert(attempts).values(attempt).run();
+      return completeIfFullyAnswered(tx, quizId, answeredAt);
+    });
+  }
 
-      const quizQuestionIds = tx
+  /**
+   * Records a "skipped" attempt (score 0) for every unanswered question and
+   * completes the quiz, atomically. Returns how many questions were skipped.
+   */
+  skipUnanswered(quizId: string, skippedAt: Date, newId: () => string): number {
+    return this.db.transaction((tx) => {
+      const unanswered = tx
         .select({ id: questions.id })
         .from(questions)
-        .where(eq(questions.quizId, quizId))
-        .all()
-        .map((row) => row.id);
-      const quizAttempts = tx
-        .select({ score: attempts.score })
-        .from(attempts)
-        .where(inArray(attempts.questionId, quizQuestionIds))
+        .leftJoin(attempts, eq(attempts.questionId, questions.id))
+        .where(and(eq(questions.quizId, quizId), isNull(attempts.id)))
         .all();
 
-      if (quizAttempts.length < quizQuestionIds.length) return false;
-
-      const meanScore = quizAttempts.reduce((sum, row) => sum + row.score, 0) / quizAttempts.length;
-      tx.update(quizzes)
-        .set({ status: "completed", score: meanScore, completedAt: answeredAt })
-        .where(and(eq(quizzes.id, quizId), eq(quizzes.status, "in_progress")))
-        .run();
-      return true;
+      if (unanswered.length > 0) {
+        tx.insert(attempts)
+          .values(
+            unanswered.map((question) => ({
+              id: newId(),
+              questionId: question.id,
+              answer: "",
+              score: 0,
+              isCorrect: false,
+              skipped: true,
+              feedback: "",
+              timeTakenMs: 0,
+              answeredAt: skippedAt,
+            })),
+          )
+          .run();
+      }
+      completeIfFullyAnswered(tx, quizId, skippedAt);
+      return unanswered.length;
     });
   }
 
@@ -179,4 +194,24 @@ export class QuizRepository {
       .innerJoin(quizzes, eq(questions.quizId, quizzes.id))
       .all();
   }
+}
+
+type Transaction = Parameters<Parameters<AppDatabase["transaction"]>[0]>[0];
+
+/** Completes the quiz with its mean score once every question has an attempt. */
+function completeIfFullyAnswered(tx: Transaction, quizId: string, completedAt: Date): boolean {
+  const rows = tx
+    .select({ score: attempts.score })
+    .from(questions)
+    .leftJoin(attempts, eq(attempts.questionId, questions.id))
+    .where(eq(questions.quizId, quizId))
+    .all();
+  if (rows.length === 0 || rows.some((row) => row.score === null)) return false;
+
+  const meanScore = rows.reduce((sum, row) => sum + (row.score ?? 0), 0) / rows.length;
+  tx.update(quizzes)
+    .set({ status: "completed", score: meanScore, completedAt })
+    .where(and(eq(quizzes.id, quizId), eq(quizzes.status, "in_progress")))
+    .run();
+  return true;
 }

@@ -42,7 +42,7 @@ export function GenerateReadingButton({
         {pending ? "Writing lesson…" : hasReading ? "Rewrite lesson" : "Write the lesson"}
       </Button>
       <p className="text-sm text-muted" aria-live="polite">
-        {pending ? "This usually takes 20 to 60 seconds." : ""}
+        {pending ? "Detailed lessons with examples usually take about a minute." : ""}
       </p>
       {error && <Alert>{error}</Alert>}
     </div>

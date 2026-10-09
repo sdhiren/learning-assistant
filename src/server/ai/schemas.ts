@@ -83,11 +83,14 @@ export const shortAnswerGradeSchema = z.object({
 export type ShortAnswerGradeOutput = z.infer<typeof shortAnswerGradeSchema>;
 
 export const readingSchema = z.object({
-  markdown: z.string().min(1).describe("The lesson in GitHub-flavoured Markdown, without a title."),
+  markdown: z
+    .string()
+    .min(1)
+    .describe("The lesson in GitHub-flavoured Markdown, following the requested ## sections."),
   keyTakeaways: z
     .array(z.string())
     .min(3)
     .max(5)
-    .describe("Points worth memorising for interviews."),
+    .describe("Short, plain-language points worth memorising for interviews."),
 });
 export type ReadingOutput = z.infer<typeof readingSchema>;

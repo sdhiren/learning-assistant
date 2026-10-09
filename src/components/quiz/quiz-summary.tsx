@@ -7,6 +7,8 @@ import { cn } from "@/lib/cn";
 import { formatPercent } from "@/lib/format";
 import type { QuizQuestionView } from "@/server/services/view-models";
 
+import { statusOf } from "./question-navigator";
+
 interface QuizSummaryProps {
   topicId: string;
   questions: readonly QuizQuestionView[];
@@ -19,6 +21,7 @@ export function QuizSummary({ topicId, questions, onReview }: QuizSummaryProps) 
   const score =
     answered.reduce((sum, result) => sum + result.score, 0) / Math.max(1, answered.length);
   const correctCount = answered.filter((result) => result.isCorrect).length;
+  const skippedCount = answered.filter((result) => result.skipped).length;
   const missedConcepts = [
     ...new Set(
       questions
@@ -36,6 +39,7 @@ export function QuizSummary({ topicId, questions, onReview }: QuizSummaryProps) 
         <p className="mt-1 text-5xl font-semibold tabular-nums">{formatPercent(score)}</p>
         <p className="mt-2 text-muted">
           {correctCount} of {questions.length} correct
+          {skippedCount > 0 && ` · ${skippedCount} skipped`}
         </p>
         {missedConcepts.length > 0 && (
           <p className="mx-auto mt-4 max-w-md text-sm">
@@ -59,17 +63,7 @@ export function QuizSummary({ topicId, questions, onReview }: QuizSummaryProps) 
                 onClick={() => onReview(index)}
                 className="flex w-full items-start gap-3 px-5 py-3.5 text-left transition-colors hover:bg-surface-muted"
               >
-                <span
-                  className={cn(
-                    "mt-0.5 font-semibold",
-                    question.result?.isCorrect ? "text-success" : "text-danger",
-                  )}
-                >
-                  <span aria-hidden="true">{question.result?.isCorrect ? "✓" : "✗"}</span>
-                  <span className="sr-only">
-                    {question.result?.isCorrect ? "Correct" : "Incorrect"}
-                  </span>
-                </span>
+                <ResultMark question={question} />
                 <span className="min-w-0 flex-1">
                   <span className="line-clamp-2 text-sm">{question.prompt}</span>
                   <span className="text-xs text-muted">{question.conceptName}</span>
@@ -82,3 +76,21 @@ export function QuizSummary({ topicId, questions, onReview }: QuizSummaryProps) 
     </section>
   );
 }
+
+function ResultMark({ question }: { question: QuizQuestionView }) {
+  const status = statusOf(question);
+  const { icon, label, className } = RESULT_MARKS[status];
+  return (
+    <span className={cn("mt-0.5 w-4 text-center font-semibold", className)}>
+      <span aria-hidden="true">{icon}</span>
+      <span className="sr-only">{label}</span>
+    </span>
+  );
+}
+
+const RESULT_MARKS = {
+  correct: { icon: "✓", label: "Correct", className: "text-success" },
+  incorrect: { icon: "✗", label: "Incorrect", className: "text-danger" },
+  skipped: { icon: "→", label: "Skipped", className: "text-muted" },
+  unanswered: { icon: "·", label: "Not answered", className: "text-muted" },
+} as const;

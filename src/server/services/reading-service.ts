@@ -11,6 +11,9 @@ import type { TopicRepository } from "@/server/repositories/topic-repository";
 import { masteryFor, type ProgressService } from "./progress-service";
 import type { ReadingView } from "./view-models";
 
+/** How many preceding concepts in the curriculum are offered as likely prerequisites. */
+const PREREQUISITE_COUNT = 4;
+
 export class ReadingService {
   constructor(
     private readonly topicRepository: TopicRepository,
@@ -48,13 +51,28 @@ export class ReadingService {
   /** Generates (or regenerates) the reading for a concept and saves it. */
   async generateReading(topicId: string, conceptId: string): Promise<void> {
     const { topic, concept } = this.requireConcept(topicId, conceptId);
+    const concepts = this.topicRepository.listConcepts(topic.id);
+    const prerequisites = concepts
+      .filter((other) => other.position < concept.position)
+      .slice(-PREREQUISITE_COUNT);
+    const prerequisiteIds = new Set(prerequisites.map((other) => other.id));
+    const siblings = concepts.filter(
+      (other) =>
+        other.subtopicId === concept.subtopicId &&
+        other.id !== concept.id &&
+        !prerequisiteIds.has(other.id),
+    );
+    const toRelated = ({ name, summary }: ConceptRow) => ({ name, summary });
     const output = await this.llm.generateStructured({
       task: "generate-reading",
       ...buildReadingPrompt({
         topicName: topic.name,
         goal: topic.goal,
+        subtopicName: this.topicRepository.findSubtopicById(concept.subtopicId)?.name ?? "",
         conceptName: concept.name,
         conceptSummary: concept.summary,
+        siblingConcepts: siblings.map(toRelated),
+        prerequisiteConcepts: prerequisites.map(toRelated),
       }),
       schema: readingSchema,
       effort: "medium",

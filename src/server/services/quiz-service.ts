@@ -155,6 +155,7 @@ export class QuizService {
       answer: input.answer,
       score: grade.score,
       isCorrect: grade.isCorrect,
+      skipped: false,
       feedback: grade.feedback,
       timeTakenMs: input.timeTakenMs,
       answeredAt,
@@ -172,6 +173,20 @@ export class QuizService {
     this.topicRepository.markStudied(quiz.topicId, answeredAt);
 
     return { result: toAnswerResult(question, attempt), quizCompleted };
+  }
+
+  /**
+   * Ends the quiz now: every unanswered question is recorded as skipped
+   * (score 0, so it counts as a gap in mastery) and its answer is revealed.
+   */
+  finishQuiz(quizId: string): QuizSessionView {
+    const quiz = this.requireQuiz(quizId);
+    if (quiz.status === "completed") throw new ConflictError("This quiz is already finished.");
+
+    const finishedAt = this.now();
+    this.quizRepository.skipUnanswered(quiz.id, finishedAt, randomUUID);
+    this.topicRepository.markStudied(quiz.topicId, finishedAt);
+    return this.getQuizSession(quiz.id);
   }
 
   /** The concepts a quiz may draw from, after checking the focus belongs to this topic. */
@@ -322,6 +337,7 @@ function toAnswerResult(question: QuestionRow, attempt: AttemptRow): AnswerResul
     answer: attempt.answer,
     score: attempt.score,
     isCorrect: attempt.isCorrect,
+    skipped: attempt.skipped,
     feedback: attempt.feedback,
     explanation: question.explanation,
     correctAnswer,
