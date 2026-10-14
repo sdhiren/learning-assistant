@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { buttonClasses } from "@/components/ui/button";
+import { InlineCodeText } from "@/components/ui/inline-code-text";
 import { cn } from "@/lib/cn";
 import { formatPercent } from "@/lib/format";
 import type { QuizQuestionView } from "@/server/services/view-models";
@@ -65,7 +66,9 @@ export function QuizSummary({ topicId, questions, onReview }: QuizSummaryProps) 
               >
                 <ResultMark question={question} />
                 <span className="min-w-0 flex-1">
-                  <span className="line-clamp-2 text-sm">{question.prompt}</span>
+                  <span className="line-clamp-2 text-sm">
+                    <InlineCodeText text={question.prompt} />
+                  </span>
                   <span className="text-xs text-muted">{question.conceptName}</span>
                 </span>
               </button>

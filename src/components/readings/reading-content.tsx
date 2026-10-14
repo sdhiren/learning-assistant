@@ -1,5 +1,6 @@
 import type { Components } from "react-markdown";
 import Markdown from "react-markdown";
+import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 
 interface ReadingContentProps {
@@ -11,6 +12,8 @@ interface ReadingContentProps {
  * Renders AI-written Markdown safely: raw HTML is skipped (react-markdown
  * never renders it), images are dropped so content can't load remote
  * resources, and links open in a new tab without leaking the referrer.
+ * Fenced code is syntax-highlighted with the same grammars and colours as
+ * quiz code blocks (see lib/highlight.ts).
  */
 const markdownComponents: Components = {
   a: ({ href, children }) => (
@@ -38,9 +41,10 @@ export function ReadingContent({ markdown, keyTakeaways }: ReadingContentProps) 
           </ul>
         </aside>
       )}
-      <div className="prose max-w-none prose-neutral dark:prose-invert prose-headings:font-semibold prose-code:rounded prose-code:bg-surface-muted prose-code:px-1 prose-code:py-0.5 prose-code:font-normal prose-code:before:content-none prose-code:after:content-none prose-pre:bg-code-bg prose-pre:text-code-ink [&_pre_code]:bg-transparent [&_pre_code]:p-0">
+      <div className="prose max-w-none prose-neutral dark:prose-invert prose-headings:font-semibold prose-code:rounded prose-code:bg-surface-muted prose-code:px-1 prose-code:py-0.5 prose-code:font-normal prose-code:before:content-none prose-code:after:content-none prose-pre:bg-code-bg prose-pre:[tab-size:4] prose-pre:text-code-ink [&_pre_code]:bg-transparent [&_pre_code]:p-0">
         <Markdown
           remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeHighlight]}
           skipHtml
           disallowedElements={["img"]}
           components={markdownComponents}

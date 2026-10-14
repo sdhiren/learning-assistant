@@ -36,6 +36,13 @@ describe("toQuestionDraft", () => {
     ).toBeNull();
   });
 
+  it("tidies generated code before storing it", () => {
+    const code = "```js\n  console.log(1);  \n```";
+    expect(toQuestionDraft({ ...codeOutputQuestion("c1"), code }, allowed)?.code).toBe(
+      "console.log(1);",
+    );
+  });
+
   it("rejects short-answer questions without a rubric", () => {
     expect(toQuestionDraft({ ...shortAnswerQuestion("c1"), rubric: [" "] }, allowed)).toBeNull();
   });

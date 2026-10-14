@@ -1,4 +1,5 @@
 import { CodeBlock } from "@/components/ui/code-block";
+import { InlineCodeText } from "@/components/ui/inline-code-text";
 import { cn } from "@/lib/cn";
 import { formatPercent } from "@/lib/format";
 import type { AnswerResultView } from "@/server/services/view-models";
@@ -7,6 +8,8 @@ interface AnswerFeedbackProps {
   result: AnswerResultView;
   /** Multiple-choice questions already highlight the correct option. */
   showCorrectAnswer: boolean;
+  /** Code-output answers are program output, shown verbatim in a code block. */
+  correctAnswerIsCode: boolean;
 }
 
 const TONE_CLASSES = {
@@ -17,7 +20,11 @@ const TONE_CLASSES = {
 
 const TONE_ICONS = { correct: "✓", incorrect: "✗", skipped: "→" } as const;
 
-export function AnswerFeedback({ result, showCorrectAnswer }: AnswerFeedbackProps) {
+export function AnswerFeedback({
+  result,
+  showCorrectAnswer,
+  correctAnswerIsCode,
+}: AnswerFeedbackProps) {
   const isPartial = result.isCorrect && result.score < 1;
   const tone = result.skipped ? "skipped" : result.isCorrect ? "correct" : "incorrect";
   const heading = result.skipped
@@ -45,7 +52,9 @@ export function AnswerFeedback({ result, showCorrectAnswer }: AnswerFeedbackProp
       </p>
 
       {result.feedback && (
-        <p className="text-sm leading-relaxed whitespace-pre-line text-ink">{result.feedback}</p>
+        <p className="text-sm leading-relaxed whitespace-pre-line text-ink">
+          <InlineCodeText text={result.feedback} />
+        </p>
       )}
 
       {showCorrectAnswer && (
@@ -53,17 +62,21 @@ export function AnswerFeedback({ result, showCorrectAnswer }: AnswerFeedbackProp
           <h2 className="text-sm font-semibold text-ink">
             {result.skipped ? "Answer" : "Model answer"}
           </h2>
-          {result.correctAnswer.includes("\n") ? (
-            <CodeBlock code={result.correctAnswer} />
+          {correctAnswerIsCode ? (
+            <CodeBlock code={result.correctAnswer} language="text" />
           ) : (
-            <p className="text-sm leading-relaxed text-ink">{result.correctAnswer}</p>
+            <p className="text-sm leading-relaxed whitespace-pre-line text-ink">
+              <InlineCodeText text={result.correctAnswer} />
+            </p>
           )}
         </div>
       )}
 
       <div className="space-y-1.5">
         <h2 className="text-sm font-semibold text-ink">Why</h2>
-        <p className="text-sm leading-relaxed whitespace-pre-line text-ink">{result.explanation}</p>
+        <p className="text-sm leading-relaxed whitespace-pre-line text-ink">
+          <InlineCodeText text={result.explanation} />
+        </p>
       </div>
     </section>
   );
