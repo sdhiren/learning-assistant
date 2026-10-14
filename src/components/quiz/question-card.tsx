@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useTransition, type KeyboardEvent } from "
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/ui/code-block";
+import { InlineCodeText } from "@/components/ui/inline-code-text";
 import { Spinner } from "@/components/ui/spinner";
 import { ANSWER_MAX_LENGTH } from "@/domain/input-schemas";
 import { QUESTION_TYPE_LABELS } from "@/domain/question";
@@ -109,7 +110,7 @@ export function QuestionCard({
           tabIndex={-1}
           className="text-lg leading-snug font-semibold whitespace-pre-line focus:outline-none sm:text-xl"
         >
-          {question.prompt}
+          <InlineCodeText text={question.prompt} />
         </h1>
       </div>
 
@@ -188,7 +189,11 @@ export function QuestionCard({
 
       {result && (
         <>
-          <AnswerFeedback result={result} showCorrectAnswer={isTextAnswer} />
+          <AnswerFeedback
+            result={result}
+            showCorrectAnswer={isTextAnswer}
+            correctAnswerIsCode={question.type === "code_output"}
+          />
           <div className="flex flex-wrap items-center gap-3">
             {previousButton}
             <Button ref={nextButtonRef} size="lg" onClick={onNext}>

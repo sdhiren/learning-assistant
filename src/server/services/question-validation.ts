@@ -1,3 +1,4 @@
+import { normalizeCode } from "@/domain/code-format";
 import { MULTIPLE_CHOICE_OPTION_COUNT, type QuestionDraft } from "@/domain/question";
 import type { GeneratedQuestion } from "@/server/ai/schemas";
 
@@ -15,7 +16,7 @@ export function toQuestionDraft(
 ): QuestionDraft | null {
   const prompt = generated.prompt.trim();
   const explanation = generated.explanation.trim();
-  const code = nonEmpty(generated.code);
+  const code = nonEmpty(generated.code && normalizeCode(generated.code));
   const codeLanguage = code ? normalizeLanguage(generated.codeLanguage) : null;
 
   if (!allowedConceptIds.has(generated.conceptId) || !prompt || !explanation) return null;

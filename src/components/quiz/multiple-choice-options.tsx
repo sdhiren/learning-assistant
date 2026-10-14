@@ -1,5 +1,6 @@
 "use client";
 
+import { InlineCodeText } from "@/components/ui/inline-code-text";
 import { cn } from "@/lib/cn";
 import type { AnswerResultView } from "@/server/services/view-models";
 
@@ -68,7 +69,9 @@ export function MultipleChoiceOptions({
               >
                 {OPTION_LETTERS[index]}
               </span>
-              <span className="text-sm leading-relaxed whitespace-pre-line">{option}</span>
+              <span className="text-sm leading-relaxed whitespace-pre-line">
+                <InlineCodeText text={option} />
+              </span>
               {isCorrectOption && <span className="sr-only"> (correct answer)</span>}
               {isWrongSelection && <span className="sr-only"> (your answer, incorrect)</span>}
             </label>

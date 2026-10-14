@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { InlineCodeText } from "@/components/ui/inline-code-text";
 import { Spinner } from "@/components/ui/spinner";
 import { finishQuizAction } from "@/server/actions/quiz-actions";
 import type { QuizQuestionView, QuizSessionView } from "@/server/services/view-models";
@@ -62,7 +63,9 @@ export function UnansweredPanel({ quizId, questions, onGoTo, onFinished }: Unans
             >
               <span className="font-mono text-sm text-muted tabular-nums">{index + 1}.</span>
               <span className="min-w-0 flex-1">
-                <span className="line-clamp-2 text-sm">{question.prompt}</span>
+                <span className="line-clamp-2 text-sm">
+                  <InlineCodeText text={question.prompt} />
+                </span>
                 <span className="text-xs text-muted">{question.conceptName}</span>
               </span>
             </button>
