@@ -6,6 +6,7 @@ import { createDatabase, type AppDatabase } from "@/server/db/client";
 import { QuizRepository } from "@/server/repositories/quiz-repository";
 import { ReadingRepository } from "@/server/repositories/reading-repository";
 import { TopicRepository } from "@/server/repositories/topic-repository";
+import { DashboardService } from "@/server/services/dashboard-service";
 import { ProgressService } from "@/server/services/progress-service";
 import { QuizService } from "@/server/services/quiz-service";
 import { ReadingService } from "@/server/services/reading-service";
@@ -14,6 +15,7 @@ import { TopicService } from "@/server/services/topic-service";
 
 /** The composition root: the only place concrete implementations are wired together. */
 export interface Services {
+  dashboard: DashboardService;
   topics: TopicService;
   subtopics: SubtopicService;
   quizzes: QuizService;
@@ -40,6 +42,7 @@ function createServices(): Services {
   const progressService = new ProgressService(quizRepository);
 
   return {
+    dashboard: new DashboardService(topicRepository, quizRepository, progressService),
     topics: new TopicService(topicRepository, quizRepository, progressService, llm),
     subtopics: new SubtopicService(topicRepository, progressService, llm),
     quizzes: new QuizService(topicRepository, quizRepository, progressService, llm),

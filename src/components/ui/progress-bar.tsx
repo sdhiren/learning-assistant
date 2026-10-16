@@ -22,7 +22,11 @@ export function ProgressBar({ value, label, className, barClassName }: ProgressB
       className={cn("h-2 w-full overflow-hidden rounded-full bg-surface-muted", className)}
     >
       <div
-        className={cn("h-full rounded-full bg-accent transition-[width]", barClassName)}
+        className={cn(
+          "h-full rounded-full transition-[width] duration-700 ease-out",
+          // A colour from the caller replaces the gradient, which would paint over it.
+          barClassName ?? "bg-brand",
+        )}
         style={{ width: `${percent}%` }}
       />
     </div>

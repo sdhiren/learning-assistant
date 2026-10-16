@@ -2,6 +2,7 @@
 
 import { useFormAction } from "@/components/hooks/use-form-action";
 import { Alert } from "@/components/ui/alert";
+import { GenerationProgress } from "@/components/ui/generation-progress";
 import { SubmitButton } from "@/components/ui/submit-button";
 import {
   DIFFICULTIES,
@@ -119,14 +120,15 @@ export function StartQuizForm({ topicId, focusOptions, fixedFocus }: StartQuizFo
 
       {state && !state.ok && <Alert>{state.error}</Alert>}
 
-      <div className="space-y-2">
-        <SubmitButton pendingLabel="Writing your quiz…" size="lg">
-          Start quiz
-        </SubmitButton>
-        <p className="text-sm text-muted" aria-live="polite">
-          {pending ? "Claude is writing questions. This usually takes 20 to 60 seconds." : ""}
-        </p>
-      </div>
+      <SubmitButton pendingLabel="Writing your quiz…" size="lg">
+        Start quiz
+      </SubmitButton>
+      {pending && (
+        <GenerationProgress
+          message="Claude is writing your questions"
+          expected="20 to 60 seconds"
+        />
+      )}
     </form>
   );
 }

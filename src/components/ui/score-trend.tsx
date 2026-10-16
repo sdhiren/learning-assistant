@@ -24,6 +24,7 @@ export function ScoreTrend({ scores }: ScoreTrendProps) {
     .map((point, index) => `${index === 0 ? "M" : "L"}${point.x},${point.y}`)
     .join(" ");
   const last = points.at(-1)!;
+  const area = `${path} L${last.x},${HEIGHT} L${points[0]!.x},${HEIGHT} Z`;
   const description = `Last ${scores.length} quiz scores: ${scores.map(formatPercent).join(", ")}`;
 
   return (
@@ -41,8 +42,19 @@ export function ScoreTrend({ scores }: ScoreTrendProps) {
         className="stroke-border"
         strokeDasharray="3 3"
       />
+      <path d={area} fill="currentColor" fillOpacity={0.12} />
       <path d={path} fill="none" stroke="currentColor" strokeWidth={2} strokeLinejoin="round" />
-      <circle cx={last.x} cy={last.y} r={3.5} fill="currentColor" />
+      {points.map((point, index) => (
+        <circle
+          key={index}
+          cx={point.x}
+          cy={point.y}
+          r={index === points.length - 1 ? 4 : 2.5}
+          fill="currentColor"
+          className={index === points.length - 1 ? "stroke-surface" : undefined}
+          strokeWidth={2}
+        />
+      ))}
     </svg>
   );
 }

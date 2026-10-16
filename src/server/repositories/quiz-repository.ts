@@ -60,6 +60,36 @@ export class QuizRepository {
       .get();
   }
 
+  /** Every in-progress quiz across topics, newest first. */
+  listInProgress(): QuizRow[] {
+    return this.db
+      .select()
+      .from(quizzes)
+      .where(eq(quizzes.status, "in_progress"))
+      .orderBy(desc(quizzes.createdAt))
+      .all();
+  }
+
+  /** How many of a quiz's questions have an attempt, for progress display. */
+  countProgress(quizId: string): { questionCount: number; answeredCount: number } {
+    const row = this.db
+      .select({ questionCount: count(questions.id), answeredCount: count(attempts.id) })
+      .from(questions)
+      .leftJoin(attempts, eq(attempts.questionId, questions.id))
+      .where(eq(questions.quizId, quizId))
+      .get();
+    return { questionCount: row?.questionCount ?? 0, answeredCount: row?.answeredCount ?? 0 };
+  }
+
+  /** When each question was answered, across all topics (skipped questions excluded). */
+  listAnswerLog(): { answeredAt: Date; isCorrect: boolean }[] {
+    return this.db
+      .select({ answeredAt: attempts.answeredAt, isCorrect: attempts.isCorrect })
+      .from(attempts)
+      .where(eq(attempts.skipped, false))
+      .all();
+  }
+
   /** Inserts a quiz and its questions, atomically. */
   createWithQuestions(quiz: NewQuiz, quizQuestions: readonly NewQuestion[]): void {
     this.db.transaction((tx) => {

@@ -39,11 +39,12 @@ export function MultipleChoiceOptions({
             <label
               key={optionValue}
               className={cn(
-                "flex items-start gap-3 rounded-xl border px-4 py-3 transition-colors",
-                !result && "cursor-pointer hover:border-accent/60",
-                !result && isSelected && "border-accent bg-accent-soft",
+                "flex items-start gap-3 rounded-xl border px-4 py-3 transition-all duration-200",
+                !result &&
+                  "cursor-pointer hover:-translate-y-px hover:border-accent/60 hover:shadow-card",
+                !result && isSelected && "border-accent bg-accent-soft shadow-card",
                 !result && !isSelected && "border-border-strong",
-                isCorrectOption && "border-success bg-success-soft",
+                isCorrectOption && "animate-pop border-success bg-success-soft",
                 isWrongSelection && "border-danger bg-danger-soft",
                 result && !isCorrectOption && !isWrongSelection && "border-border opacity-70",
                 "has-focus-visible:outline-2 has-focus-visible:outline-accent",
@@ -62,8 +63,9 @@ export function MultipleChoiceOptions({
                 aria-hidden="true"
                 className={cn(
                   "grid size-6 shrink-0 place-items-center rounded-md border font-mono text-xs",
+                  "transition-colors",
                   isSelected
-                    ? "border-accent bg-accent text-on-accent"
+                    ? "border-transparent bg-brand text-white"
                     : "border-border-strong text-muted",
                 )}
               >

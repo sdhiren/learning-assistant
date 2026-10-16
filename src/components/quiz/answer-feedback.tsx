@@ -39,7 +39,7 @@ export function AnswerFeedback({
     <section
       aria-live="polite"
       aria-label="Feedback"
-      className={cn("space-y-4 rounded-xl border p-5", TONE_CLASSES[tone].container)}
+      className={cn("animate-pop space-y-4 rounded-xl border p-5", TONE_CLASSES[tone].container)}
     >
       <p className={cn("flex items-center gap-2 font-semibold", TONE_CLASSES[tone].heading)}>
         <span aria-hidden="true">{TONE_ICONS[tone]}</span>

@@ -11,13 +11,17 @@ export function Breadcrumbs({ items }: { items: readonly Crumb[] }) {
       <ol className="flex flex-wrap items-center gap-1.5">
         {items.map((item, index) => (
           <li key={`${item.label}-${index}`} className="flex items-center gap-1.5">
-            {index > 0 && <span aria-hidden="true">/</span>}
+            {index > 0 && (
+              <span aria-hidden="true" className="text-border-strong">
+                ›
+              </span>
+            )}
             {item.href ? (
-              <Link href={item.href} className="hover:text-ink hover:underline">
+              <Link href={item.href} className="transition-colors hover:text-accent">
                 {item.label}
               </Link>
             ) : (
-              <span aria-current="page" className="text-ink">
+              <span aria-current="page" className="font-medium text-ink">
                 {item.label}
               </span>
             )}
