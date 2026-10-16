@@ -62,7 +62,7 @@ export default async function SubtopicPage(props: SubtopicPageProps) {
           <ConceptList topicId={subtopic.topicId} concepts={subtopic.concepts} />
         </section>
 
-        <Card aria-labelledby="subtopic-quiz-heading" className="lg:sticky lg:top-6">
+        <Card aria-labelledby="subtopic-quiz-heading" className="lg:sticky lg:top-20">
           <CardTitle id="subtopic-quiz-heading">Quiz this subtopic</CardTitle>
           <p className="mt-1 mb-5 text-sm text-muted">
             Questions cover the concepts on this page, weakest first.

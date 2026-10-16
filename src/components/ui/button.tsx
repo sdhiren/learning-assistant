@@ -6,8 +6,10 @@ export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary: "bg-accent text-on-accent hover:bg-accent-hover",
-  secondary: "border border-border-strong bg-surface text-ink hover:bg-surface-muted",
+  primary:
+    "bg-brand text-white shadow-lift hover:brightness-110 enabled:hover:-translate-y-px disabled:shadow-none",
+  secondary:
+    "border border-border-strong bg-surface text-ink hover:border-accent/60 hover:bg-surface-muted",
   ghost: "text-muted hover:bg-surface-muted hover:text-ink",
   danger: "border border-danger/40 text-danger hover:bg-danger-soft",
 };
@@ -21,7 +23,8 @@ const SIZE_CLASSES: Record<ButtonSize, string> = {
 /** Button styling, also used to make links look like buttons. */
 export function buttonClasses(variant: ButtonVariant = "primary", size: ButtonSize = "md"): string {
   return cn(
-    "inline-flex shrink-0 items-center justify-center gap-2 rounded-lg font-medium transition-colors",
+    "inline-flex shrink-0 items-center justify-center gap-2 rounded-lg font-medium transition-all",
+    "active:translate-y-0 active:scale-[0.98]",
     "disabled:cursor-not-allowed disabled:opacity-60",
     VARIANT_CLASSES[variant],
     SIZE_CLASSES[size],

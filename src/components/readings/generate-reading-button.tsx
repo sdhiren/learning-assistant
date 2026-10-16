@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { GenerationProgress } from "@/components/ui/generation-progress";
 import { Spinner } from "@/components/ui/spinner";
 import { generateReadingAction } from "@/server/actions/reading-actions";
 
@@ -41,9 +42,9 @@ export function GenerateReadingButton({
         {pending && <Spinner />}
         {pending ? "Writing lesson…" : hasReading ? "Rewrite lesson" : "Write the lesson"}
       </Button>
-      <p className="text-sm text-muted" aria-live="polite">
-        {pending ? "Detailed lessons with examples usually take about a minute." : ""}
-      </p>
+      {pending && (
+        <GenerationProgress message="Claude is writing your lesson" expected="about a minute" />
+      )}
       {error && <Alert>{error}</Alert>}
     </div>
   );

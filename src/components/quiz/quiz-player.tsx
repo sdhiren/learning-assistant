@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { FlameIcon } from "@/components/ui/icons";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { DIFFICULTY_LABELS } from "@/domain/difficulty";
 import type {
@@ -30,6 +31,8 @@ export function QuizPlayer({ quiz }: { quiz: QuizSessionView }) {
   // Unsent answers and time spent survive navigating away from a question.
   const [drafts, setDrafts] = useState<Partial<Record<string, string>>>({});
   const elapsedMsRef = useRef(new Map<string, number>());
+  // Correct answers in a row during this visit, for a little momentum.
+  const [combo, setCombo] = useState(0);
 
   const answeredCount = questions.filter((question) => question.result).length;
   const endIndex = questions.length;
@@ -50,6 +53,7 @@ export function QuizPlayer({ quiz }: { quiz: QuizSessionView }) {
       previous.map((question) => (question.id === questionId ? { ...question, result } : question)),
     );
     setDrafts((previous) => ({ ...previous, [questionId]: undefined }));
+    setCombo((previous) => (result.isCorrect ? previous + 1 : 0));
   }
 
   /** Skip: move on to the next unanswered question, or the end screen. */
@@ -72,6 +76,16 @@ export function QuizPlayer({ quiz }: { quiz: QuizSessionView }) {
                 : "Almost done"}
           </span>
           <span className="flex items-center gap-3">
+            {combo >= 2 && (
+              <span
+                key={combo}
+                role="status"
+                className="flex animate-pop items-center gap-1 rounded-full bg-brand px-2.5 py-1 text-xs font-semibold text-white shadow-lift"
+              >
+                <FlameIcon className="size-3.5" />
+                {combo} in a row
+              </span>
+            )}
             <span className="text-muted">
               {answeredCount}/{questions.length} answered
             </span>

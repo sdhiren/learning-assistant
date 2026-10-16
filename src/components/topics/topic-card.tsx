@@ -1,29 +1,41 @@
 import Link from "next/link";
 
-import { ProgressBar } from "@/components/ui/progress-bar";
-import { formatPercent, formatRelativeDate } from "@/lib/format";
+import { ArrowRightIcon } from "@/components/ui/icons";
+import { MasteryBreakdown } from "@/components/ui/mastery-breakdown";
+import { ProgressRing } from "@/components/ui/progress-ring";
+import { formatRelativeDate } from "@/lib/format";
 import type { TopicSummaryView } from "@/server/services/view-models";
 
 export function TopicCard({ topic }: { topic: TopicSummaryView }) {
   return (
     <Link
       href={`/topics/${topic.id}`}
-      className="group flex h-full flex-col gap-4 rounded-2xl border border-border bg-surface p-5 transition-colors hover:border-accent/60"
+      className="group relative flex h-full flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-surface p-5 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-accent/50 hover:shadow-lift"
     >
-      <div className="space-y-1.5">
-        <h3 className="font-semibold group-hover:text-accent">{topic.name}</h3>
-        <p className="line-clamp-2 text-sm text-muted">{topic.summary}</p>
+      {/* A gradient edge that slides in on hover. */}
+      <span
+        aria-hidden="true"
+        className="absolute inset-x-0 top-0 h-1 origin-left scale-x-0 bg-brand transition-transform duration-300 group-hover:scale-x-100"
+      />
+      <div className="flex items-start gap-4">
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <h3 className="font-semibold transition-colors group-hover:text-accent">{topic.name}</h3>
+          <p className="line-clamp-2 text-sm text-muted">{topic.summary}</p>
+        </div>
+        <ProgressRing value={topic.progress} label={`${topic.name} mastery`} />
       </div>
-      <div className="mt-auto space-y-2">
-        <ProgressBar value={topic.progress} label={`${topic.name} progress`} />
-        <div className="flex justify-between text-xs text-muted">
+      <div className="mt-auto space-y-2.5">
+        <MasteryBreakdown counts={topic.masteryCounts} />
+        <div className="flex items-center justify-between text-xs text-muted">
           <span>
-            {formatPercent(topic.progress)} mastered · {topic.conceptCount} concepts
-          </span>
-          <span>
+            {topic.conceptCount} concepts ·{" "}
             {topic.lastStudiedAt
-              ? `Studied ${formatRelativeDate(topic.lastStudiedAt)}`
-              : "Not started"}
+              ? `studied ${formatRelativeDate(topic.lastStudiedAt)}`
+              : "not started"}
+          </span>
+          <span className="flex items-center gap-1 font-medium text-accent opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+            Open
+            <ArrowRightIcon className="size-3" />
           </span>
         </div>
       </div>

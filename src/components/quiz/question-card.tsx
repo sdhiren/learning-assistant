@@ -14,6 +14,8 @@ import type { AnswerResultView, QuizQuestionView } from "@/server/services/view-
 
 import { AnswerFeedback } from "./answer-feedback";
 import { MultipleChoiceOptions } from "./multiple-choice-options";
+import { ShortcutHint } from "./shortcut-hint";
+import { useQuizShortcuts } from "./use-quiz-shortcuts";
 
 interface QuestionCardProps {
   question: QuizQuestionView;
@@ -88,6 +90,17 @@ export function QuestionCard({
   }
 
   const isTextAnswer = question.type !== "multiple_choice";
+  const optionCount = question.type === "multiple_choice" ? (question.options?.length ?? 0) : 0;
+
+  useQuizShortcuts({
+    optionCount,
+    answered: Boolean(result),
+    onSelectOption: (index) => !pending && setAnswer(String(index)),
+    onSubmit: submit,
+    onSkip: () => !pending && onSkip(),
+    onNext,
+    onPrevious: pending ? null : onPrevious,
+  });
   const previousButton = onPrevious && (
     <Button variant="ghost" size="lg" onClick={onPrevious} disabled={pending}>
       ← Previous
@@ -95,10 +108,10 @@ export function QuestionCard({
   );
 
   return (
-    <article className="space-y-5 rounded-2xl border border-border bg-surface p-5 sm:p-7">
+    <article className="animate-fade-up space-y-5 rounded-2xl border border-border bg-surface p-5 shadow-card sm:p-7">
       <div className="space-y-3">
         <p className="flex flex-wrap gap-2 text-xs font-medium">
-          <span className="rounded-full bg-accent-soft px-2.5 py-1 text-accent">
+          <span className="rounded-full bg-brand px-2.5 py-1 text-white">
             {question.conceptName}
           </span>
           <span className="rounded-full bg-surface-muted px-2.5 py-1 text-muted">
@@ -185,6 +198,15 @@ export function QuestionCard({
             )}
           </div>
         )}
+        {!result && optionCount > 0 && (
+          <ShortcutHint
+            keys={[
+              [`A–${String.fromCharCode(64 + optionCount)}`, "choose"],
+              ["Enter", "submit"],
+              ["S", "skip"],
+            ]}
+          />
+        )}
       </form>
 
       {result && (
@@ -200,6 +222,7 @@ export function QuestionCard({
               {isLastQuestion ? "Finish" : "Next question →"}
             </Button>
           </div>
+          <ShortcutHint keys={[["N", isLastQuestion ? "finish" : "next question"]]} />
         </>
       )}
     </article>

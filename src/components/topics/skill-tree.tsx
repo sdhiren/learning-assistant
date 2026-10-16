@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { ConceptList } from "@/components/topics/concept-list";
 import { buttonClasses } from "@/components/ui/button";
-import { ProgressBar } from "@/components/ui/progress-bar";
+import { ProgressRing } from "@/components/ui/progress-ring";
 import { formatPercent } from "@/lib/format";
 import type { SubtopicView } from "@/server/services/view-models";
 
@@ -27,12 +27,20 @@ export function SkillTree({ topicId, subtopics }: SkillTreeProps) {
         {subtopics.map((subtopic, index) => {
           const href = `/topics/${topicId}/subtopics/${subtopic.id}`;
           return (
-            <li key={subtopic.id} className="rounded-2xl border border-border bg-surface">
+            <li
+              key={subtopic.id}
+              className="overflow-hidden rounded-2xl border border-border bg-surface shadow-card"
+            >
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-5 py-3">
                 <h3 className="flex min-w-0 flex-1 items-center gap-3 font-medium">
-                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-surface-muted font-mono text-xs text-muted">
-                    {index + 1}
-                  </span>
+                  <ProgressRing
+                    value={subtopic.progress}
+                    label={`${subtopic.name} progress`}
+                    size={34}
+                    strokeWidth={4}
+                  >
+                    <span className="font-mono text-muted">{index + 1}</span>
+                  </ProgressRing>
                   <Link href={href} className="hover:text-accent hover:underline">
                     {subtopic.name}
                   </Link>
@@ -43,11 +51,8 @@ export function SkillTree({ topicId, subtopics }: SkillTreeProps) {
                   )}
                 </h3>
                 <span className="flex items-center gap-3">
-                  <span className="w-24">
-                    <ProgressBar value={subtopic.progress} label={`${subtopic.name} progress`} />
-                  </span>
-                  <span className="w-10 text-right text-xs text-muted tabular-nums">
-                    {formatPercent(subtopic.progress)}
+                  <span className="text-xs text-muted tabular-nums">
+                    {formatPercent(subtopic.progress)} mastered
                   </span>
                   <Link
                     href={href}
