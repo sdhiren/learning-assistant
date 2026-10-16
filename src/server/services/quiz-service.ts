@@ -127,6 +127,7 @@ export class QuizService {
           id: question.id,
           position: question.position,
           type: question.type,
+          conceptId: question.conceptId,
           conceptName: conceptNames.get(question.conceptId) ?? "",
           prompt: question.prompt,
           code: question.code,

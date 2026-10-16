@@ -74,3 +74,15 @@ export function computeTopicProgress(conceptMasteries: readonly Mastery[]): numb
   const total = conceptMasteries.reduce((sum, mastery) => sum + (mastery.score ?? 0), 0);
   return total / conceptMasteries.length;
 }
+
+/** How many concepts sit at each mastery level. */
+export function countByLevel(masteries: readonly Mastery[]): Record<MasteryLevel, number> {
+  const counts: Record<MasteryLevel, number> = {
+    not_started: 0,
+    weak: 0,
+    developing: 0,
+    strong: 0,
+  };
+  for (const mastery of masteries) counts[mastery.level]++;
+  return counts;
+}

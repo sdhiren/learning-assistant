@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { computeMastery, computeTopicProgress, type AttemptEvidence } from "./mastery";
+import {
+  computeMastery,
+  computeTopicProgress,
+  countByLevel,
+  type AttemptEvidence,
+} from "./mastery";
 
 const at = (minute: number) => new Date(Date.UTC(2026, 0, 1, 0, minute));
 const attempt = (
@@ -55,5 +60,16 @@ describe("computeTopicProgress", () => {
 
   it("is zero for a topic without concepts", () => {
     expect(computeTopicProgress([])).toBe(0);
+  });
+});
+
+describe("countByLevel", () => {
+  it("counts concepts at every level, including empty ones", () => {
+    const counts = countByLevel([
+      { level: "strong", score: 0.9, attemptCount: 3 },
+      { level: "weak", score: 0.2, attemptCount: 1 },
+      { level: "weak", score: 0.1, attemptCount: 2 },
+    ]);
+    expect(counts).toEqual({ not_started: 0, weak: 2, developing: 0, strong: 1 });
   });
 });

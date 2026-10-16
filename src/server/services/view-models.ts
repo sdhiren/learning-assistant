@@ -1,5 +1,6 @@
+import type { ActivitySummary } from "@/domain/activity";
 import type { Difficulty } from "@/domain/difficulty";
-import type { Mastery } from "@/domain/mastery";
+import type { Mastery, MasteryLevel } from "@/domain/mastery";
 import type { QuestionType } from "@/domain/question";
 import type { QuizStatus, SubtopicOrigin } from "@/server/db/schema";
 
@@ -16,7 +17,38 @@ export interface TopicSummaryView {
   conceptCount: number;
   /** 0 to 1. */
   progress: number;
+  /** How many of the topic's concepts sit at each mastery level. */
+  masteryCounts: Record<MasteryLevel, number>;
   lastStudiedAt: Date | null;
+}
+
+export interface InProgressQuizView {
+  id: string;
+  topicId: string;
+  topicName: string;
+  difficulty: Difficulty;
+  focusLabel: string | null;
+  questionCount: number;
+  answeredCount: number;
+}
+
+export interface RecommendedConceptView {
+  topicId: string;
+  topicName: string;
+  concept: ConceptView;
+}
+
+/** The home page: how practice is going, and what to do next. */
+export interface DashboardView {
+  activity: ActivitySummary;
+  /** Share of all answers that were correct, or null with no answers. */
+  accuracy: number | null;
+  conceptCount: number;
+  /** Concepts at "strong" mastery, across every topic. */
+  strongConceptCount: number;
+  inProgressQuizzes: InProgressQuizView[];
+  /** The concepts across all topics most worth practising next. */
+  recommendations: RecommendedConceptView[];
 }
 
 export interface ConceptView {
@@ -88,6 +120,7 @@ export interface QuizQuestionView {
   id: string;
   position: number;
   type: QuestionType;
+  conceptId: string;
   conceptName: string;
   prompt: string;
   code: string | null;

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { selectFocusConcepts } from "@/domain/concept-selection";
 import type { CreateTopicInput } from "@/domain/input-schemas";
-import { computeTopicProgress } from "@/domain/mastery";
+import { countByLevel, computeTopicProgress } from "@/domain/mastery";
 import { ConflictError, NotFoundError } from "@/lib/errors";
 import type { LlmClient } from "@/server/ai/llm-client";
 import { buildSkillTreePrompt } from "@/server/ai/prompts";
@@ -80,12 +80,14 @@ export class TopicService {
 
     return this.topicRepository.listAll().map((topic) => {
       const topicConcepts = conceptsByTopic.get(topic.id) ?? [];
+      const topicMasteries = topicConcepts.map((c) => masteryFor(masteries, c.id));
       return {
         id: topic.id,
         name: topic.name,
         summary: topic.summary,
         conceptCount: topicConcepts.length,
-        progress: computeTopicProgress(topicConcepts.map((c) => masteryFor(masteries, c.id))),
+        progress: computeTopicProgress(topicMasteries),
+        masteryCounts: countByLevel(topicMasteries),
         lastStudiedAt: topic.lastStudiedAt,
       };
     });

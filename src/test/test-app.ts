@@ -3,6 +3,7 @@ import { createDatabase } from "@/server/db/client";
 import { QuizRepository } from "@/server/repositories/quiz-repository";
 import { ReadingRepository } from "@/server/repositories/reading-repository";
 import { TopicRepository } from "@/server/repositories/topic-repository";
+import { DashboardService } from "@/server/services/dashboard-service";
 import { ProgressService } from "@/server/services/progress-service";
 import { QuizService } from "@/server/services/quiz-service";
 import { ReadingService } from "@/server/services/reading-service";
@@ -25,6 +26,7 @@ export function createTestApp() {
   return {
     db,
     llm,
+    dashboard: new DashboardService(topicRepository, quizRepository, progressService, now),
     topics: new TopicService(topicRepository, quizRepository, progressService, llm, now),
     subtopics: new SubtopicService(topicRepository, progressService, llm),
     quizzes: new QuizService(topicRepository, quizRepository, progressService, llm, now),
