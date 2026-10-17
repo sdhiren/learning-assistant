@@ -35,6 +35,49 @@ function looseOutput(output: string): string {
     .toLowerCase();
 }
 
+function editDistance(a: string, b: string): number {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const curr = [i];
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      curr[j] = Math.min((prev[j] ?? 0) + 1, (curr[j - 1] ?? 0) + 1, (prev[j - 1] ?? 0) + cost);
+    }
+    prev = curr;
+  }
+  return prev[b.length] ?? 0;
+}
+
+/**
+ * A word counts as a typo of another only if both are purely alphabetic and
+ * long enough that a slip can't turn one value into another (true/false,
+ * nil/nul). Numbers and symbols must always match exactly.
+ */
+function isWordTypo(answer: string, expected: string): boolean {
+  if (!/^[a-z]+$/.test(answer) || !/^[a-z]+$/.test(expected)) return false;
+  if (expected.length < 4) return false;
+  const allowed = expected.length >= 8 ? 2 : 1;
+  return editDistance(answer, expected) <= allowed;
+}
+
+/** Same lines and words as expected, allowing small spelling slips in words. */
+function matchesWithTypos(answer: string, expected: string): boolean {
+  const answerLines = looseOutput(answer).split("\n");
+  const expectedLines = looseOutput(expected).split("\n");
+  if (answerLines.length !== expectedLines.length) return false;
+  return expectedLines.every((line, i) => {
+    const want = line.split(" ");
+    const got = (answerLines[i] ?? "").split(" ");
+    return (
+      got.length === want.length &&
+      want.every((word, j) => {
+        const gotWord = got[j] ?? "";
+        return gotWord === word || isWordTypo(gotWord, word);
+      })
+    );
+  });
+}
+
 export function gradeCodeOutput(answer: string, expected: string): GradeResult {
   if (normalizeOutput(answer) === normalizeOutput(expected)) {
     return { score: 1, isCorrect: true, feedback: "Exactly right." };
@@ -44,6 +87,14 @@ export function gradeCodeOutput(answer: string, expected: string): GradeResult {
       score: 0.8,
       isCorrect: true,
       feedback: "Right values. Check the exact formatting (quotes, spacing or case).",
+    };
+  }
+  if (matchesWithTypos(answer, expected)) {
+    return {
+      score: 0.75,
+      isCorrect: true,
+      feedback:
+        "Right values, with a small spelling slip. Compare your text with the model answer.",
     };
   }
   return { score: 0, isCorrect: false, feedback: "That's not what this code prints." };
