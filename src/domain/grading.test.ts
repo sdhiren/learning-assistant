@@ -37,6 +37,27 @@ describe("gradeCodeOutput", () => {
     });
   });
 
+  it("passes with reduced credit when a word has a small typo", () => {
+    expect(
+      gradeCodeOutput(
+        "closure 1\nclousure  0\narg 0\nresult 12",
+        "closure 1\nclosure 0\narg 0\nresult 12",
+      ),
+    ).toMatchObject({ score: 0.75, isCorrect: true });
+  });
+
+  it("never forgives a different value", () => {
+    expect(gradeCodeOutput("closure 2\nclosure 0", "closure 1\nclosure 0")).toMatchObject({
+      score: 0,
+      isCorrect: false,
+    });
+    expect(gradeCodeOutput("ok true", "ok false")).toMatchObject({ isCorrect: false });
+    expect(gradeCodeOutput("nul", "nil")).toMatchObject({ isCorrect: false });
+    expect(gradeCodeOutput("result 12\narg 0", "arg 0\nresult 12")).toMatchObject({
+      isCorrect: false,
+    });
+  });
+
   it("rejects different output", () => {
     expect(gradeCodeOutput("3", "2")).toMatchObject({ score: 0, isCorrect: false });
   });
