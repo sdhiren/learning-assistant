@@ -46,6 +46,23 @@ describe("gradeCodeOutput", () => {
     ).toMatchObject({ score: 0.75, isCorrect: true });
   });
 
+  it("forgives a typo in a word that has punctuation attached", () => {
+    const expected = "process defer 2\nprocess defer 1\nrecovered: boom\nmain deferred";
+    expect(
+      gradeCodeOutput("process defer 2\nprocess defer 1\nrecoverd: boom\nmain deferred", expected),
+    ).toMatchObject({ score: 0.75, isCorrect: true });
+    expect(gradeCodeOutput("(sucess), done.", "(success), done.")).toMatchObject({
+      isCorrect: true,
+    });
+  });
+
+  it("still requires the punctuation around a misspelt word to match", () => {
+    expect(gradeCodeOutput("recoverd; boom", "recovered: boom")).toMatchObject({
+      isCorrect: false,
+    });
+    expect(gradeCodeOutput("map[a:1]", "map[a:2]")).toMatchObject({ isCorrect: false });
+  });
+
   it("never forgives a different value", () => {
     expect(gradeCodeOutput("closure 2\nclosure 0", "closure 1\nclosure 0")).toMatchObject({
       score: 0,
