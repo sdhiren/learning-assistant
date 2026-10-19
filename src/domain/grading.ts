@@ -60,19 +60,31 @@ function isWordTypo(answer: string, expected: string): boolean {
   return editDistance(answer, expected) <= allowed;
 }
 
-/** Same lines and words as expected, allowing small spelling slips in words. */
+/**
+ * Splits a line into words, numbers and single punctuation marks, so that
+ * punctuation attached to a word ("recovered:") doesn't stop the word from
+ * being compared on its own.
+ */
+function tokenize(line: string): string[] {
+  return line.match(/[a-z]+|\d+|[^\sa-z\d]/g) ?? [];
+}
+
+/**
+ * Same lines and tokens as expected, allowing small spelling slips in words.
+ * Numbers and punctuation must match exactly.
+ */
 function matchesWithTypos(answer: string, expected: string): boolean {
   const answerLines = looseOutput(answer).split("\n");
   const expectedLines = looseOutput(expected).split("\n");
   if (answerLines.length !== expectedLines.length) return false;
   return expectedLines.every((line, i) => {
-    const want = line.split(" ");
-    const got = (answerLines[i] ?? "").split(" ");
+    const want = tokenize(line);
+    const got = tokenize(answerLines[i] ?? "");
     return (
       got.length === want.length &&
-      want.every((word, j) => {
-        const gotWord = got[j] ?? "";
-        return gotWord === word || isWordTypo(gotWord, word);
+      want.every((token, j) => {
+        const gotToken = got[j] ?? "";
+        return gotToken === token || isWordTypo(gotToken, token);
       })
     );
   });
