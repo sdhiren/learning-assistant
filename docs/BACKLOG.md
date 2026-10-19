@@ -1,15 +1,42 @@
 # Backlog
 
-Improvements we plan to make, picked up one at a time. When an item is picked, move it to
-**In progress**; when it ships, move it to **Done** with the PR link.
+Improvements we plan to make, picked up one at a time.
+
+**How to use it:**
+
+- New requirements go under **Requested** with the next free number (B15, B16, ...).
+- Larger items get a design doc in `docs/design/`, linked from the item, with its open
+  questions. An item is ready to build once its questions are answered.
+- When work starts, set the status to `in progress` and move a short summary to **In progress**.
+- When it ships, move it to **Done** with the PR link.
 
 Status: `todo` · `in progress` · `done`. Size: S (hours), M (a day), L (several days).
 
 ## Requested
 
-### B1. Learner instructions when generating quizzes and lessons — `in progress` · M
+### B13. Profiles with isolated data — `todo` · L
 
-Built together with **B5**; see **In progress**.
+Several profiles in one installation; two profiles never share topics, quizzes, answers, mastery,
+lessons or settings.
+
+- **Design:** [docs/design/profiles.md](design/profiles.md). Recommended approach: one SQLite
+  file per profile, plus a small profile registry. Isolation is structural, with no per-query
+  filtering to get wrong. Existing data becomes the "Default" profile in place.
+- **Open question:** is separating data enough, or should a profile be PIN-locked so someone else
+  using the same Mac can't switch into it?
+
+### B14. Claude authentication with an API key — `todo` · M
+
+Let the app use an Anthropic API key as well as the Claude subscription (Claude Code login).
+
+- **Design:** [docs/design/api-key-auth.md](design/api-key-auth.md). Recommended approach: a
+  second `LlmClient`, `AnthropicApiClient`, on the official Anthropic SDK. Ship with an env var
+  first, then a settings page that stores the key in the macOS Keychain (never in the database
+  or the browser).
+- Also fixes a trap: in subscription mode, a stray `ANTHROPIC_API_KEY` in the shell silently
+  bills the API key today.
+- **Open questions:** one key for the app or a key per profile (recommended, needs B13)? Is the
+  env var enough, or do you want the settings page too? Which model or models with an API key?
 
 ### B2. Delete a subtopic — `todo` · S
 
@@ -43,10 +70,6 @@ A new question type `coding_challenge`: "write a function that…", with starter
 Answer keys are AI-generated and can be wrong. A "This answer key looks wrong" button on the
 feedback panel asks Claude to re-check the question. If the key is wrong, the attempt gets full
 credit and the question is marked so it isn't reused in `recentQuestionPrompts`.
-
-### B5. Rewrite a lesson with instructions — `in progress` · S
-
-A "Rewrite lesson" button already existed. Built together with **B1**; see **In progress**.
 
 ### B6. Review my mistakes — `todo` · M
 
@@ -86,16 +109,19 @@ Full-text search across generated lessons and key takeaways (SQLite FTS5).
 
 ## In progress
 
-### B1 + B5. Learner instructions for quizzes and lessons
-
-- Optional, collapsible "Add instructions for Claude" field (max 300 characters) on the
-  start-quiz form and on the write/rewrite lesson button.
-- Sent to Claude in a `<learner_instructions>` tag placed **after** the main rules, framed as a
-  preference that never overrides counts, ids, question types, structure, accuracy or the output
-  format.
-- Saved with the quiz (`quizzes.instructions`) and the lesson (`readings.instructions`), and
-  shown on the quiz page and under the lesson. Migration `0003` only adds columns.
+Nothing in progress.
 
 ## Done
 
-- (awaiting merge) Typo-tolerant grading for code-output answers. [PR #4](https://github.com/sdhiren/learning-assistant/pull/4)
+- **B1 + B5.** Learner instructions for quizzes and lessons, including "Rewrite lesson" with
+  instructions. Saved with the quiz and the lesson; migration `0003` only adds columns.
+  [PR #5](https://github.com/sdhiren/learning-assistant/pull/5)
+- Typo-tolerant grading for code-output answers.
+  [PR #4](https://github.com/sdhiren/learning-assistant/pull/4), fixed for words with attached
+  punctuation in [PR #6](https://github.com/sdhiren/learning-assistant/pull/6)
+- UI refresh: theme switch, practice dashboard, livelier quizzes and lessons.
+  [PR #3](https://github.com/sdhiren/learning-assistant/pull/3)
+- Clean formatting of generated code in quizzes and lessons.
+  [PR #2](https://github.com/sdhiren/learning-assistant/pull/2)
+- Quiz skip and back navigation; simpler, example-rich lessons.
+  [PR #1](https://github.com/sdhiren/learning-assistant/pull/1)
