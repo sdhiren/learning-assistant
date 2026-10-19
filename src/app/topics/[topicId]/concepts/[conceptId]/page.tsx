@@ -91,7 +91,15 @@ export default async function ConceptPage(props: ConceptPageProps) {
                 keyTakeaways={reading.content.keyTakeaways}
               />
               <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4 text-sm text-muted">
-                <span>Written {formatRelativeDate(reading.content.createdAt)}</span>
+                <div className="space-y-1">
+                  <p>Written {formatRelativeDate(reading.content.createdAt)}</p>
+                  {reading.content.instructions && (
+                    <p>
+                      <span className="font-medium text-ink">Your instructions:</span>{" "}
+                      {reading.content.instructions}
+                    </p>
+                  )}
+                </div>
                 <GenerateReadingButton
                   topicId={reading.topicId}
                   conceptId={reading.conceptId}

@@ -87,6 +87,8 @@ export const quizzes = sqliteTable(
       onDelete: "set null",
     }),
     status: text("status", { enum: QUIZ_STATUSES }).notNull(),
+    /** Optional learner preferences given when the quiz was generated. */
+    instructions: text("instructions").notNull().default(""),
     /** Mean question score from 0 to 1, set on completion. */
     score: real("score"),
     createdAt: timestamp("created_at").notNull(),
@@ -147,6 +149,8 @@ export const readings = sqliteTable("readings", {
     .references(() => concepts.id, { onDelete: "cascade" }),
   markdown: text("markdown").notNull(),
   keyTakeaways: text("key_takeaways", { mode: "json" }).$type<string[]>().notNull(),
+  /** Optional learner preferences given when the lesson was written. */
+  instructions: text("instructions").notNull().default(""),
   createdAt: timestamp("created_at").notNull(),
 });
 

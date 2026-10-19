@@ -19,6 +19,7 @@ export async function startQuizAction(
       difficulty: formData.get("difficulty"),
       questionCount: formData.get("questionCount"),
       focus: formData.get("focus") ?? undefined,
+      instructions: formData.get("instructions") ?? undefined,
     });
     return getServices().quizzes.startQuiz(input);
   });

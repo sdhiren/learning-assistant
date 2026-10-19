@@ -8,6 +8,7 @@ export const TOPIC_NAME_MAX_LENGTH = 80;
 export const TOPIC_GOAL_MAX_LENGTH = 300;
 export const SUBTOPIC_NAME_MAX_LENGTH = 80;
 export const SUBTOPIC_NOTES_MAX_LENGTH = 300;
+export const INSTRUCTIONS_MAX_LENGTH = 300;
 export const ANSWER_MAX_LENGTH = 4000;
 export const QUESTION_COUNT_OPTIONS = [5, 10] as const;
 
@@ -24,6 +25,23 @@ const singleLineText = (maxLength: number) =>
     .refine((value) => !CONTROL_CHARACTERS.test(value) && !value.includes("\n"), {
       message: "Contains characters that aren't allowed.",
     });
+
+/**
+ * Optional learner instructions for generation, e.g. "focus on Go 1.22 loop
+ * semantics". Newlines are allowed; other control characters aren't.
+ */
+const learnerInstructions = z
+  .string()
+  .trim()
+  .max(
+    INSTRUCTIONS_MAX_LENGTH,
+    `Instructions must be at most ${INSTRUCTIONS_MAX_LENGTH} characters.`,
+  )
+  .refine((value) => !CONTROL_CHARACTERS.test(value), {
+    message: "Contains characters that aren't allowed.",
+  })
+  .optional()
+  .default("");
 
 export const id = z.uuid({ message: "Invalid id." });
 
@@ -79,8 +97,16 @@ export const startQuizInput = z.object({
       message: "Choose a quiz length.",
     }),
   focus: quizFocus,
+  instructions: learnerInstructions,
 });
 export type StartQuizInput = z.infer<typeof startQuizInput>;
+
+export const generateReadingInput = z.object({
+  topicId: id,
+  conceptId: id,
+  instructions: learnerInstructions,
+});
+export type GenerateReadingInput = z.infer<typeof generateReadingInput>;
 
 export const submitAnswerInput = z.object({
   questionId: id,

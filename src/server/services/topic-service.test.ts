@@ -63,6 +63,7 @@ describe("TopicService", () => {
       difficulty: "easy",
       questionCount: 5,
       focus: { kind: "concept", id: conceptId },
+      instructions: "",
     });
 
     app.topics.deleteTopic(topicId);

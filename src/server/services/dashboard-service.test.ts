@@ -25,6 +25,7 @@ describe("DashboardService", () => {
       difficulty: "medium",
       questionCount: 5,
       focus: { kind: "weak_spots" },
+      instructions: "",
     });
   }
 

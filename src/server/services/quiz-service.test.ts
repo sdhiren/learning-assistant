@@ -21,9 +21,16 @@ describe("QuizService", () => {
   async function startQuiz(
     questions: GeneratedQuestion[],
     focus: QuizFocus = { kind: "weak_spots" },
+    instructions = "",
   ) {
     app.llm.respondTo("generate-quiz", { questions });
-    return app.quizzes.startQuiz({ topicId, difficulty: "medium", questionCount: 5, focus });
+    return app.quizzes.startQuiz({
+      topicId,
+      difficulty: "medium",
+      questionCount: 5,
+      focus,
+      instructions,
+    });
   }
 
   function answer(questionId: string, value: string) {
@@ -45,6 +52,29 @@ describe("QuizService", () => {
       const prompt = app.llm.requestsFor("generate-quiz")[0]!.prompt;
       for (const id of conceptIds.slice(0, 5)) expect(prompt).toContain(`id: ${id}`);
       expect(prompt).not.toContain(`id: ${conceptIds[5]}`);
+    });
+
+    it("passes learner instructions after the main rules and saves them on the quiz", async () => {
+      const quizId = await startQuiz(
+        conceptIds.slice(0, 5).map((id) => multipleChoiceQuestion(id)),
+        { kind: "weak_spots" },
+        "More code-output questions",
+      );
+      const prompt = app.llm.requestsFor("generate-quiz")[0]!.prompt;
+      const instructionsAt = prompt.indexOf(
+        "<learner_instructions>\nMore code-output questions\n</learner_instructions>",
+      );
+      expect(instructionsAt).toBeGreaterThan(prompt.indexOf("Rules:"));
+      expect(prompt).toContain("they never override");
+      expect(app.quizzes.getQuizSession(quizId).instructions).toBe("More code-output questions");
+    });
+
+    it("leaves instructions out of the prompt when there are none", async () => {
+      const quizId = await startQuiz(
+        conceptIds.slice(0, 5).map((id) => multipleChoiceQuestion(id)),
+      );
+      expect(app.llm.requestsFor("generate-quiz")[0]!.prompt).not.toContain("learner_instructions");
+      expect(app.quizzes.getQuizSession(quizId).instructions).toBe("");
     });
 
     it("puts every question on the chosen concept", async () => {

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import type { GenerateReadingInput } from "@/domain/input-schemas";
 import { NotFoundError } from "@/lib/errors";
 import type { LlmClient } from "@/server/ai/llm-client";
 import { buildReadingPrompt } from "@/server/ai/prompts";
@@ -42,6 +43,7 @@ export class ReadingService {
         ? {
             markdown: reading.markdown,
             keyTakeaways: reading.keyTakeaways,
+            instructions: reading.instructions,
             createdAt: reading.createdAt,
           }
         : null,
@@ -49,8 +51,8 @@ export class ReadingService {
   }
 
   /** Generates (or regenerates) the reading for a concept and saves it. */
-  async generateReading(topicId: string, conceptId: string): Promise<void> {
-    const { topic, concept } = this.requireConcept(topicId, conceptId);
+  async generateReading(input: GenerateReadingInput): Promise<void> {
+    const { topic, concept } = this.requireConcept(input.topicId, input.conceptId);
     const concepts = this.topicRepository.listConcepts(topic.id);
     const prerequisites = concepts
       .filter((other) => other.position < concept.position)
@@ -73,6 +75,7 @@ export class ReadingService {
         conceptSummary: concept.summary,
         siblingConcepts: siblings.map(toRelated),
         prerequisiteConcepts: prerequisites.map(toRelated),
+        instructions: input.instructions,
       }),
       schema: readingSchema,
       effort: "medium",
@@ -83,6 +86,7 @@ export class ReadingService {
       conceptId: concept.id,
       markdown: output.markdown.trim(),
       keyTakeaways: output.keyTakeaways.map((point) => point.trim()).filter(Boolean),
+      instructions: input.instructions,
       createdAt: this.now(),
     });
   }

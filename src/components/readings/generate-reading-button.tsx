@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { GenerationProgress } from "@/components/ui/generation-progress";
+import { InstructionsField } from "@/components/ui/instructions-field";
 import { Spinner } from "@/components/ui/spinner";
 import { generateReadingAction } from "@/server/actions/reading-actions";
 
@@ -20,19 +21,27 @@ export function GenerateReadingButton({
   conceptId,
   hasReading,
 }: GenerateReadingButtonProps) {
+  const [instructions, setInstructions] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function handleClick() {
     setError(null);
     startTransition(async () => {
-      const result = await generateReadingAction(topicId, conceptId);
+      const result = await generateReadingAction({ topicId, conceptId, instructions });
       if (!result.ok) setError(result.error);
     });
   }
 
   return (
     <div className="space-y-3">
+      <InstructionsField
+        id={`lesson-instructions-${conceptId}`}
+        example="e.g. use a bank-account analogy, more Go examples, skip the basics"
+        value={instructions}
+        onChange={(event) => setInstructions(event.target.value)}
+        disabled={pending}
+      />
       <Button
         variant={hasReading ? "ghost" : "primary"}
         size={hasReading ? "sm" : "md"}

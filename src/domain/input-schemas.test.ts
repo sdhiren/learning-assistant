@@ -33,6 +33,7 @@ describe("startQuizInput", () => {
       topicId: base.topicId,
       difficulty: "hard",
       questionCount: 10,
+      instructions: "",
       focus: { kind: "weak_spots" },
     });
   });
@@ -48,6 +49,15 @@ describe("startQuizInput", () => {
       expect(startQuizInput.safeParse({ ...base, focus }).success).toBe(false);
     },
   );
+
+  it("trims instructions, allows newlines and caps their length", () => {
+    expect(startQuizInput.parse(base).instructions).toBe("");
+    expect(startQuizInput.parse({ ...base, instructions: "  a\nb  " }).instructions).toBe("a\nb");
+    expect(startQuizInput.safeParse({ ...base, instructions: "x".repeat(301) }).success).toBe(
+      false,
+    );
+    expect(startQuizInput.safeParse({ ...base, instructions: "a\u0007b" }).success).toBe(false);
+  });
 
   it("rejects unsupported lengths and difficulties", () => {
     expect(startQuizInput.safeParse({ ...base, questionCount: "500" }).success).toBe(false);

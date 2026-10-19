@@ -118,6 +118,7 @@ describe("SubtopicService", () => {
         difficulty: "medium",
         questionCount: 5,
         focus: { kind: "subtopic", id: subtopicId },
+        instructions: "",
       });
 
       const prompt = app.llm.requestsFor("generate-quiz")[0]!.prompt;
@@ -146,6 +147,7 @@ describe("SubtopicService", () => {
           difficulty: "easy",
           questionCount: 5,
           focus: { kind: "subtopic", id: foreignSubtopicId },
+          instructions: "",
         }),
       ).rejects.toBeInstanceOf(NotFoundError);
     });
