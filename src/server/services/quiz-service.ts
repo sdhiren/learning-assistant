@@ -67,6 +67,7 @@ export class QuizService {
           topic.id,
           RECENT_PROMPTS_TO_AVOID,
         ),
+        instructions: input.instructions,
       }),
       schema: generatedQuizSchema,
       effort: "medium",
@@ -94,6 +95,7 @@ export class QuizService {
         focusConceptId: input.focus.kind === "concept" ? input.focus.id : null,
         focusSubtopicId: input.focus.kind === "subtopic" ? input.focus.id : null,
         status: "in_progress",
+        instructions: input.instructions,
         createdAt,
       },
       drafts.map((draft, position) => toQuestionRow(draft, quizId, position)),
@@ -119,6 +121,7 @@ export class QuizService {
       topicName: topic.name,
       difficulty: quiz.difficulty,
       focusLabel: focusLabelFor(quiz, this.topicRepository.listSubtopics(topic.id), concepts),
+      instructions: quiz.instructions,
       status: quiz.status,
       score: quiz.score,
       questions: this.quizRepository.listQuestions(quiz.id).map((question): QuizQuestionView => {

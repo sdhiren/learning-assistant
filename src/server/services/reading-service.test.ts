@@ -28,17 +28,47 @@ describe("ReadingService", () => {
       markdown: "## Core idea\nFirst version",
       keyTakeaways: ["a", "b", "c"],
     });
-    await app.readings.generateReading(topicId, conceptId);
+    await app.readings.generateReading({ topicId, conceptId: conceptId, instructions: "" });
 
     app.llm.respondTo("generate-reading", {
       markdown: "## Core idea\nSecond version",
       keyTakeaways: ["d", "e", "f"],
     });
-    await app.readings.generateReading(topicId, conceptId);
+    await app.readings.generateReading({ topicId, conceptId: conceptId, instructions: "" });
 
     expect(app.readings.getReading(topicId, conceptId).content).toMatchObject({
       markdown: "## Core idea\nSecond version",
       keyTakeaways: ["d", "e", "f"],
+    });
+  });
+
+  it("rewrites a lesson with learner instructions and remembers them", async () => {
+    app.llm.respondTo("generate-reading", {
+      markdown: "## The big idea\nFirst",
+      keyTakeaways: ["a", "b", "c"],
+    });
+    await app.readings.generateReading({ topicId, conceptId, instructions: "" });
+    app.llm.respondTo("generate-reading", {
+      markdown: "## The big idea\nWith an analogy",
+      keyTakeaways: ["a", "b", "c"],
+    });
+    await app.readings.generateReading({
+      topicId,
+      conceptId,
+      instructions: "Use a restaurant analogy",
+    });
+
+    const [first, second] = app.llm.requestsFor("generate-reading");
+    expect(first!.prompt).not.toContain("learner_instructions");
+    expect(second!.prompt).toContain(
+      "<learner_instructions>\nUse a restaurant analogy\n</learner_instructions>",
+    );
+    expect(second!.prompt.indexOf("<learner_instructions>")).toBeGreaterThan(
+      second!.prompt.indexOf("Structure (use these ## headings"),
+    );
+    expect(app.readings.getReading(topicId, conceptId).content).toMatchObject({
+      markdown: "## The big idea\nWith an analogy",
+      instructions: "Use a restaurant analogy",
     });
   });
 
@@ -51,7 +81,7 @@ describe("ReadingService", () => {
       keyTakeaways: ["a", "b", "c"],
     });
 
-    await app.readings.generateReading(topicId, target.id);
+    await app.readings.generateReading({ topicId, conceptId: target.id, instructions: "" });
 
     const request = app.llm.requestsFor("generate-reading")[0]!;
     expect(request.prompt).toContain("<concept>\nES modules: import semantics.\n</concept>");

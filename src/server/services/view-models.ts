@@ -136,6 +136,8 @@ export interface QuizSessionView {
   topicName: string;
   difficulty: Difficulty;
   focusLabel: string | null;
+  /** Learner preferences the quiz was generated with; empty when none. */
+  instructions: string;
   status: QuizStatus;
   score: number | null;
   questions: QuizQuestionView[];
@@ -155,5 +157,11 @@ export interface ReadingView {
   topicId: string;
   topicName: string;
   mastery: Mastery;
-  content: { markdown: string; keyTakeaways: string[]; createdAt: Date } | null;
+  content: {
+    markdown: string;
+    keyTakeaways: string[];
+    /** Learner preferences the lesson was written with; empty when none. */
+    instructions: string;
+    createdAt: Date;
+  } | null;
 }

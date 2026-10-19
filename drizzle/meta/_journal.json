@@ -22,6 +22,13 @@
       "when": 1791128529262,
       "tag": "0002_attempt_skipped",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1792229812593,
+      "tag": "0003_learner_instructions",
+      "breakpoints": true
     }
   ]
 }

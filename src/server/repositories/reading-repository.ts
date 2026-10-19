@@ -22,6 +22,7 @@ export class ReadingRepository {
         set: {
           markdown: reading.markdown,
           keyTakeaways: reading.keyTakeaways,
+          instructions: reading.instructions ?? "",
           createdAt: reading.createdAt,
         },
       })

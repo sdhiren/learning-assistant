@@ -27,6 +27,11 @@ export default async function QuizPage(props: PageProps<"/quizzes/[quizId]">) {
           },
         ]}
       />
+      {quiz.instructions && (
+        <p className="mb-4 text-sm text-muted">
+          <span className="font-medium text-ink">Your instructions:</span> {quiz.instructions}
+        </p>
+      )}
       <QuizPlayer quiz={quiz} />
     </div>
   );

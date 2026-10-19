@@ -3,6 +3,7 @@
 import { useFormAction } from "@/components/hooks/use-form-action";
 import { Alert } from "@/components/ui/alert";
 import { GenerationProgress } from "@/components/ui/generation-progress";
+import { InstructionsField } from "@/components/ui/instructions-field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import {
   DIFFICULTIES,
@@ -117,6 +118,12 @@ export function StartQuizForm({ topicId, focusOptions, fixedFocus }: StartQuizFo
           </div>
         )}
       </div>
+
+      <InstructionsField
+        id={`instructions-${topicId}`}
+        example="e.g. more code-output questions, focus on Go 1.22 loop semantics"
+        defaultValue={values.instructions}
+      />
 
       {state && !state.ok && <Alert>{state.error}</Alert>}
 
