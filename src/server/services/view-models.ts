@@ -70,6 +70,8 @@ export interface SubtopicView {
 export interface SubtopicDetailView extends SubtopicView {
   topicId: string;
   topicName: string;
+  /** Whether the learner may delete it, with the reason shown when they can't. */
+  deletion: { allowed: true } | { allowed: false; reason: string };
 }
 
 export interface QuizHistoryItemView {

@@ -14,6 +14,9 @@ import { buildSkillMap, toNameKey } from "./skill-map";
 import type { SubtopicDetailView } from "./view-models";
 
 const DUPLICATE_MESSAGE = "This topic already has a subtopic with that name.";
+const HAS_HISTORY_MESSAGE =
+  "This subtopic has answered questions, so it's kept to preserve your quiz history.";
+const LAST_SUBTOPIC_MESSAGE = "A topic needs at least one subtopic.";
 
 /** Lets learners extend a topic's skill map with their own subtopics. */
 export class SubtopicService {
@@ -21,6 +24,7 @@ export class SubtopicService {
     private readonly topicRepository: TopicRepository,
     private readonly progressService: ProgressService,
     private readonly llm: LlmClient,
+    private readonly now: () => Date = () => new Date(),
   ) {}
 
   /**
@@ -94,7 +98,42 @@ export class SubtopicService {
     const [view] = buildSkillMap([subtopic], concepts, masteries);
     if (!view) throw new NotFoundError("Subtopic not found.");
 
-    return { ...view, topicId: topic.id, topicName: topic.name };
+    return {
+      ...view,
+      topicId: topic.id,
+      topicName: topic.name,
+      deletion: this.deletionRule(topic.id, subtopic.id),
+    };
+  }
+
+  /**
+   * Deletes a subtopic that has no quiz history (see TopicRepository for the
+   * rules and what happens to quizzes that contained its questions).
+   */
+  deleteSubtopic(topicId: string, subtopicId: string): void {
+    const subtopic = this.topicRepository.findSubtopicById(subtopicId);
+    if (!subtopic || subtopic.topicId !== topicId) throw new NotFoundError("Subtopic not found.");
+
+    switch (this.topicRepository.deleteSubtopic(subtopic.id, this.now())) {
+      case "deleted":
+        return;
+      case "not_found":
+        throw new NotFoundError("Subtopic not found.");
+      case "has_history":
+        throw new ConflictError(HAS_HISTORY_MESSAGE);
+      case "last_subtopic":
+        throw new ConflictError(LAST_SUBTOPIC_MESSAGE);
+    }
+  }
+
+  private deletionRule(topicId: string, subtopicId: string): SubtopicDetailView["deletion"] {
+    if (this.topicRepository.countSubtopics(topicId) <= 1) {
+      return { allowed: false, reason: LAST_SUBTOPIC_MESSAGE };
+    }
+    if (this.topicRepository.subtopicHasHistory(subtopicId)) {
+      return { allowed: false, reason: HAS_HISTORY_MESSAGE };
+    }
+    return { allowed: true };
   }
 
   private assertNameAvailable(topicId: string, name: string): void {

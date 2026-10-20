@@ -4,16 +4,17 @@ import { connection } from "next/server";
 import { cache } from "react";
 
 import { AddSubtopicForm } from "@/components/topics/add-subtopic-form";
-import { DeleteTopicButton } from "@/components/topics/delete-topic-button";
 import { RecentQuizzes } from "@/components/topics/recent-quizzes";
 import { SkillTree } from "@/components/topics/skill-tree";
 import { StartQuizForm } from "@/components/topics/start-quiz-form";
 import { TopicStats } from "@/components/topics/topic-stats";
 import { ArrowRightIcon, PlayIcon, TargetIcon } from "@/components/ui/icons";
 import { Card, CardTitle } from "@/components/ui/card";
+import { ConfirmDeleteButton } from "@/components/ui/confirm-delete-button";
 import { MasteryBadge } from "@/components/ui/mastery-badge";
 import { ProgressRing } from "@/components/ui/progress-ring";
 import { formatPercent } from "@/lib/format";
+import { deleteTopicAction } from "@/server/actions/topic-actions";
 import { getServices } from "@/server/container";
 import { orNotFound } from "@/server/or-not-found";
 
@@ -135,7 +136,11 @@ export default async function TopicPage(props: PageProps<"/topics/[topicId]">) {
             Removes the topic with all of its quizzes and readings.
           </p>
         </div>
-        <DeleteTopicButton topicId={topic.id} topicName={topic.name} />
+        <ConfirmDeleteButton
+          label="Delete topic"
+          confirmation={`Delete “${topic.name}” for good?`}
+          action={deleteTopicAction.bind(null, topic.id)}
+        />
       </section>
     </div>
   );

@@ -11,6 +11,8 @@ import {
   type QuizRow,
 } from "@/server/db/schema";
 
+import { completeIfFullyAnswered } from "./quiz-completion";
+
 export type NewQuiz = typeof quizzes.$inferInsert;
 export type NewQuestion = typeof questions.$inferInsert;
 export type NewAttempt = typeof attempts.$inferInsert;
@@ -224,24 +226,4 @@ export class QuizRepository {
       .innerJoin(quizzes, eq(questions.quizId, quizzes.id))
       .all();
   }
-}
-
-type Transaction = Parameters<Parameters<AppDatabase["transaction"]>[0]>[0];
-
-/** Completes the quiz with its mean score once every question has an attempt. */
-function completeIfFullyAnswered(tx: Transaction, quizId: string, completedAt: Date): boolean {
-  const rows = tx
-    .select({ score: attempts.score })
-    .from(questions)
-    .leftJoin(attempts, eq(attempts.questionId, questions.id))
-    .where(eq(questions.quizId, quizId))
-    .all();
-  if (rows.length === 0 || rows.some((row) => row.score === null)) return false;
-
-  const meanScore = rows.reduce((sum, row) => sum + (row.score ?? 0), 0) / rows.length;
-  tx.update(quizzes)
-    .set({ status: "completed", score: meanScore, completedAt })
-    .where(and(eq(quizzes.id, quizId), eq(quizzes.status, "in_progress")))
-    .run();
-  return true;
 }

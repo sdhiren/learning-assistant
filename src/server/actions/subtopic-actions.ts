@@ -1,8 +1,9 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { addSubtopicInput } from "@/domain/input-schemas";
+import { addSubtopicInput, deleteSubtopicInput } from "@/domain/input-schemas";
 import type { ActionResult } from "@/lib/action-result";
 import { getServices } from "@/server/container";
 
@@ -25,4 +26,21 @@ export async function addSubtopicAction(
 
   if (!result.ok) return result;
   redirect(`/topics/${topicId}/subtopics/${result.data}`);
+}
+
+export async function deleteSubtopicAction(input: {
+  topicId: string;
+  subtopicId: string;
+}): Promise<ActionResult> {
+  let topicId = "";
+  const result = await runAction("deleteSubtopic", () => {
+    const parsed = deleteSubtopicInput.parse(input);
+    topicId = parsed.topicId;
+    getServices().subtopics.deleteSubtopic(parsed.topicId, parsed.subtopicId);
+    return undefined;
+  });
+
+  if (!result.ok) return result;
+  revalidatePath(`/topics/${topicId}`);
+  redirect(`/topics/${topicId}`);
 }
