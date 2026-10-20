@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/ui/code-block";
 import { InlineCodeText } from "@/components/ui/inline-code-text";
 import { Spinner } from "@/components/ui/spinner";
-import { ANSWER_MAX_LENGTH } from "@/domain/input-schemas";
+import { detectIndent } from "@/domain/code-format";
+import { maxAnswerLength } from "@/domain/input-schemas";
 import { QUESTION_TYPE_LABELS } from "@/domain/question";
 import { submitAnswerAction } from "@/server/actions/quiz-actions";
 import type { AnswerResultView, QuizQuestionView } from "@/server/services/view-models";
 
 import { AnswerFeedback } from "./answer-feedback";
+import { CodeEditor } from "./code-editor";
 import { MultipleChoiceOptions } from "./multiple-choice-options";
 import { ShortcutHint } from "./shortcut-hint";
 import { useQuizShortcuts } from "./use-quiz-shortcuts";
@@ -67,8 +69,14 @@ export function QuestionCard({
     if (result) nextButtonRef.current?.focus();
   }, [result]);
 
+  const isCodingChallenge = question.type === "coding_challenge";
+  const starterCode = isCodingChallenge ? (question.code ?? "") : "";
+  // A coding answer must change the starter code before it can be submitted.
+  const canSubmit =
+    answer.trim().length > 0 && !(isCodingChallenge && answer.trim() === starterCode.trim());
+
   function submit() {
-    if (pending || result || !answer.trim()) return;
+    if (pending || result || !canSubmit) return;
     setError(null);
     const timeTakenMs = getTimeSpent(questionId) + (Date.now() - shownAtRef.current);
     startTransition(async () => {
@@ -127,7 +135,9 @@ export function QuestionCard({
         </h1>
       </div>
 
-      {question.code && <CodeBlock code={question.code} language={question.codeLanguage} />}
+      {question.code && !isCodingChallenge && (
+        <CodeBlock code={question.code} language={question.codeLanguage} />
+      )}
 
       <form
         onSubmit={(event) => {
@@ -146,7 +156,42 @@ export function QuestionCard({
             result={result}
             disabled={pending || Boolean(result)}
           />
-        ) : result?.skipped ? null : (
+        ) : result?.skipped ? null : isCodingChallenge ? (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-3">
+              <label htmlFor={`answer-${question.id}`} className="text-sm font-medium">
+                Your solution{question.codeLanguage ? ` (${question.codeLanguage})` : ""}
+              </label>
+              {!result && answer !== starterCode && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setAnswer(starterCode)}
+                  disabled={pending}
+                >
+                  Reset to starter code
+                </Button>
+              )}
+            </div>
+            <CodeEditor
+              id={`answer-${question.id}`}
+              value={result ? result.answer : answer}
+              onChange={setAnswer}
+              onSubmit={submit}
+              readOnly={Boolean(result)}
+              disabled={pending}
+              maxLength={maxAnswerLength(question.type)}
+              describedBy={`answer-hint-${question.id}`}
+              indent={detectIndent(starterCode)}
+            />
+            {!result && (
+              <p id={`answer-hint-${question.id}`} className="text-xs text-muted">
+                Claude reviews your code for correctness, edge cases and complexity; it isn&apos;t
+                run. Tab indents (Esc, then Tab, leaves the editor). ⌘/Ctrl + Enter submits.
+              </p>
+            )}
+          </div>
+        ) : (
           <div className="space-y-1.5">
             <label htmlFor={`answer-${question.id}`} className="text-sm font-medium">
               {question.type === "code_output" ? "Exact output" : "Your answer"}
@@ -158,7 +203,7 @@ export function QuestionCard({
               onKeyDown={handleTextKeyDown}
               readOnly={Boolean(result)}
               disabled={pending}
-              maxLength={ANSWER_MAX_LENGTH}
+              maxLength={maxAnswerLength(question.type)}
               rows={question.type === "code_output" ? 4 : 6}
               spellCheck={question.type !== "code_output"}
               placeholder={
@@ -184,16 +229,18 @@ export function QuestionCard({
         {!result && (
           <div className="flex flex-wrap items-center gap-3">
             {previousButton}
-            <Button type="submit" size="lg" disabled={pending || !answer.trim()}>
+            <Button type="submit" size="lg" disabled={pending || !canSubmit}>
               {pending && <Spinner />}
               {pending ? (isTextAnswer ? "Grading…" : "Checking…") : "Submit answer"}
             </Button>
             <Button variant="secondary" size="lg" onClick={onSkip} disabled={pending}>
               Skip for now
             </Button>
-            {pending && question.type === "short_answer" && (
+            {pending && (question.type === "short_answer" || isCodingChallenge) && (
               <span className="text-sm text-muted" aria-live="polite">
-                Claude is reviewing your answer…
+                {isCodingChallenge
+                  ? "Claude is reviewing your code. This can take up to a minute."
+                  : "Claude is reviewing your answer…"}
               </span>
             )}
           </div>
@@ -214,7 +261,10 @@ export function QuestionCard({
           <AnswerFeedback
             result={result}
             showCorrectAnswer={isTextAnswer}
-            correctAnswerIsCode={question.type === "code_output"}
+            correctAnswerFormat={
+              isCodingChallenge ? "solution" : question.type === "code_output" ? "output" : "prose"
+            }
+            codeLanguage={question.codeLanguage}
           />
           <div className="flex flex-wrap items-center gap-3">
             {previousButton}

@@ -8,16 +8,22 @@ import {
   isPassingScore,
   type GradeResult,
 } from "@/domain/grading";
-import type { QuizFocus, StartQuizInput, SubmitAnswerInput } from "@/domain/input-schemas";
+import {
+  maxAnswerLength,
+  type QuizFocus,
+  type StartQuizInput,
+  type SubmitAnswerInput,
+} from "@/domain/input-schemas";
 import type { QuestionDraft } from "@/domain/question";
 import { AiGenerationError, ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import type { LlmClient } from "@/server/ai/llm-client";
 import {
   buildQuizPrompt,
+  buildCodeReviewPrompt,
   buildShortAnswerGradingPrompt,
   type QuizPromptConcept,
 } from "@/server/ai/prompts";
-import { generatedQuizSchema, shortAnswerGradeSchema } from "@/server/ai/schemas";
+import { codeReviewSchema, generatedQuizSchema, shortAnswerGradeSchema } from "@/server/ai/schemas";
 import { isUniqueConstraintError } from "@/server/db/errors";
 import type { AttemptRow, ConceptRow, QuestionRow, QuizRow, TopicRow } from "@/server/db/schema";
 import type { QuizRepository } from "@/server/repositories/quiz-repository";
@@ -150,6 +156,10 @@ export class QuizService {
     if (this.quizRepository.hasAttempt(question.id)) {
       throw new ConflictError("You've already answered this question.");
     }
+    const limit = maxAnswerLength(question.type);
+    if (input.answer.length > limit) {
+      throw new ValidationError(`Answers are limited to ${limit} characters.`);
+    }
 
     const grade = await this.grade(question, quiz, input.answer);
     const answeredAt = this.now();
@@ -269,7 +279,42 @@ export class QuizService {
         return gradeCodeOutput(answer, question.expectedAnswer ?? "");
       case "short_answer":
         return this.gradeShortAnswer(question, quiz, answer);
+      case "coding_challenge":
+        return this.reviewCode(question, quiz, answer);
     }
+  }
+
+  /** Claude reviews the solution against the rubric; the code is never executed. */
+  private async reviewCode(
+    question: QuestionRow,
+    quiz: QuizRow,
+    answer: string,
+  ): Promise<GradeResult> {
+    const topic = this.requireTopic(quiz.topicId);
+    const review = await this.llm.generateStructured({
+      task: "review-coding-challenge",
+      ...buildCodeReviewPrompt({
+        topicName: topic.name,
+        difficulty: quiz.difficulty,
+        task: question.prompt,
+        language: question.codeLanguage ?? "text",
+        starterCode: question.code ?? "",
+        referenceSolution: question.expectedAnswer ?? "",
+        rubric: question.rubric ?? [],
+        learnerSolution: answer,
+      }),
+      schema: codeReviewSchema,
+      effort: "medium",
+    });
+
+    const score = clampScore(review.score);
+    const feedback = [
+      review.summary.trim(),
+      `Correctness:\n${review.correctness.trim()}`,
+      `Edge cases:\n${review.edgeCases.trim()}`,
+      `Complexity:\n${review.complexity.trim()}`,
+    ].join("\n\n");
+    return { score, isCorrect: isPassingScore(score), feedback };
   }
 
   private async gradeShortAnswer(
@@ -328,7 +373,7 @@ function toQuestionRow(draft: QuestionDraft, quizId: string, position: number): 
     options: draft.type === "multiple_choice" ? draft.options : null,
     correctOptionIndex: draft.type === "multiple_choice" ? draft.correctOptionIndex : null,
     expectedAnswer: draft.type === "multiple_choice" ? null : draft.expectedAnswer,
-    rubric: draft.type === "short_answer" ? draft.rubric : null,
+    rubric: "rubric" in draft ? draft.rubric : null,
   };
 }
 

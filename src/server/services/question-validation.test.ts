@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { codeOutputQuestion, multipleChoiceQuestion, shortAnswerQuestion } from "@/test/test-app";
+import {
+  codeOutputQuestion,
+  codingChallengeQuestion,
+  multipleChoiceQuestion,
+  shortAnswerQuestion,
+} from "@/test/test-app";
 
 import { toQuestionDraft } from "./question-validation";
 
@@ -45,5 +50,30 @@ describe("toQuestionDraft", () => {
 
   it("rejects short-answer questions without a rubric", () => {
     expect(toQuestionDraft({ ...shortAnswerQuestion("c1"), rubric: [" "] }, allowed)).toBeNull();
+  });
+
+  describe("coding challenges", () => {
+    it("accepts a challenge with starter code, a solution and a rubric", () => {
+      expect(toQuestionDraft(codingChallengeQuestion("c1"), allowed)).toMatchObject({
+        type: "coding_challenge",
+        codeLanguage: "javascript",
+        code: "function sumEven(nums) {\n  // TODO\n}",
+        rubric: ["Returns the correct sum", "Handles an empty array", "Runs in O(n)"],
+      });
+    });
+
+    it.each([
+      ["no starter code", { code: null }],
+      ["no reference solution", { expectedAnswer: null }],
+      [
+        "a solution identical to the starter code",
+        { expectedAnswer: "function sumEven(nums) {\n  // TODO\n}" },
+      ],
+      ["a one-point rubric", { rubric: ["Correct"] }],
+    ])("rejects a challenge with %s", (_case, override) => {
+      expect(
+        toQuestionDraft({ ...codingChallengeQuestion("c1"), ...override }, allowed),
+      ).toBeNull();
+    });
   });
 });

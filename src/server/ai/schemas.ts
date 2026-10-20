@@ -45,7 +45,10 @@ export const generatedQuizSchema = z.object({
       code: z
         .string()
         .nullable()
-        .describe("Code snippet. Required for code_output; optional otherwise; null if unused."),
+        .describe(
+          "code_output: the snippet. coding_challenge: starter code (signature plus a TODO, " +
+            "never the solution). Optional otherwise; null if unused.",
+        ),
       codeLanguage: z
         .string()
         .nullable()
@@ -63,17 +66,33 @@ export const generatedQuizSchema = z.object({
         .nullable()
         .describe(
           "short_answer: a concise model answer. code_output: the exact program output. " +
-            "multiple_choice: null.",
+            "coding_challenge: a complete, idiomatic reference solution. multiple_choice: null.",
         ),
       rubric: z
         .array(z.string())
-        .describe("short_answer: 2-4 key points a strong answer covers. Empty array otherwise."),
+        .describe(
+          "short_answer: 2-4 key points a strong answer covers. coding_challenge: 3-5 points " +
+            "covering correctness, edge cases and time/space complexity. Empty array otherwise.",
+        ),
       explanation: z.string().min(1).describe("Why the answer is correct, teaching the concept."),
     }),
   ),
 });
 export type GeneratedQuizOutput = z.infer<typeof generatedQuizSchema>;
 export type GeneratedQuestion = GeneratedQuizOutput["questions"][number];
+
+export const codeReviewSchema = z.object({
+  score: z
+    .number()
+    .min(0)
+    .max(1)
+    .describe("0 to 1. 1 = correct, handles the edge cases and has appropriate complexity."),
+  summary: z.string().min(1).describe("One or two sentences: the overall verdict."),
+  correctness: z.string().min(1).describe("Does it solve the problem? Point to any bug."),
+  edgeCases: z.string().min(1).describe("Which edge cases are handled or missed."),
+  complexity: z.string().min(1).describe("Time and space complexity, and whether it's fitting."),
+});
+export type CodeReviewOutput = z.infer<typeof codeReviewSchema>;
 
 export const shortAnswerGradeSchema = z.object({
   score: z.number().min(0).max(1).describe("0 to 1. 1 = covers every rubric point accurately."),

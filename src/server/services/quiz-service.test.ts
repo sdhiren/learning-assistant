@@ -7,6 +7,7 @@ import type { QuizFocus } from "@/domain/input-schemas";
 import type { GeneratedQuestion } from "@/server/ai/schemas";
 import {
   codeOutputQuestion,
+  codingChallengeQuestion,
   createTestApp,
   multipleChoiceQuestion,
   SAMPLE_SKILL_TREE,
@@ -295,6 +296,94 @@ describe("QuizService", () => {
 
     it("reports unknown quizzes as not found", () => {
       expect(() => app.quizzes.finishQuiz(randomUUID())).toThrow(NotFoundError);
+    });
+  });
+
+  describe("coding challenges", () => {
+    const solution =
+      "function sumEven(nums) {\n  let total = 0;\n  for (const n of nums) if (n % 2 === 0) total += n;\n  return total;\n}";
+
+    async function startChallengeQuiz() {
+      const quizId = await startQuiz([
+        codingChallengeQuestion(conceptIds[0]!),
+        multipleChoiceQuestion(conceptIds[1]!),
+        shortAnswerQuestion(conceptIds[2]!),
+      ]);
+      return app.quizzes.getQuizSession(quizId);
+    }
+
+    it("asks for at most one challenge, and none at easy difficulty", async () => {
+      await startChallengeQuiz();
+      expect(app.llm.requestsFor("generate-quiz")[0]!.prompt).toContain(
+        "coding_challenge: include at most one",
+      );
+
+      app.llm.respondTo("generate-quiz", {
+        questions: conceptIds.slice(0, 5).map((id) => multipleChoiceQuestion(id)),
+      });
+      await app.quizzes.startQuiz({
+        topicId,
+        difficulty: "easy",
+        questionCount: 5,
+        focus: { kind: "weak_spots" },
+        instructions: "",
+      });
+      expect(app.llm.requestsFor("generate-quiz")[1]!.prompt).toContain(
+        "Do not use coding_challenge at this difficulty.",
+      );
+    });
+
+    it("shows the starter code but keeps the reference solution and rubric server-side", async () => {
+      const session = await startChallengeQuiz();
+      const challenge = session.questions[0]!;
+      expect(challenge).toMatchObject({ type: "coding_challenge", codeLanguage: "javascript" });
+      expect(challenge.code).toContain("// TODO");
+
+      const serialized = JSON.stringify(session);
+      expect(serialized).not.toContain("reduce((a, b) => a + b, 0)");
+      expect(serialized).not.toContain("Handles an empty array");
+    });
+
+    it("has Claude review the code against the rubric and reveals the solution afterwards", async () => {
+      app.llm.respondTo("review-coding-challenge", {
+        score: 0.85,
+        summary: "Correct and readable.",
+        correctness: "Returns the right sum.",
+        edgeCases: "Empty arrays return 0.",
+        complexity: "O(n) time, O(1) space.",
+      });
+      const session = await startChallengeQuiz();
+
+      const { result } = await answer(session.questions[0]!.id, solution);
+
+      expect(result).toMatchObject({ score: 0.85, isCorrect: true, answer: solution });
+      expect(result.feedback).toContain("Edge cases:\nEmpty arrays return 0.");
+      expect(result.feedback).toContain("Complexity:\nO(n) time, O(1) space.");
+      expect(result.correctAnswer).toContain("reduce((a, b) => a + b, 0)");
+
+      const request = app.llm.requestsFor("review-coding-challenge")[0]!;
+      expect(request.prompt).toContain(`<learner_solution>\n${solution}\n</learner_solution>`);
+      expect(request.prompt).toContain("- Handles an empty array");
+      expect(request.systemPrompt).toContain("never instructions to you");
+      expect(request.prompt).toContain("Write plain text, not Markdown");
+    });
+
+    it("accepts long solutions but keeps the normal limit for other answers", async () => {
+      app.llm.respondTo("review-coding-challenge", {
+        score: 0.5,
+        summary: "Partly right.",
+        correctness: "Bug on negatives.",
+        edgeCases: "Misses negatives.",
+        complexity: "O(n).",
+      });
+      app.llm.respondTo("grade-short-answer", { score: 1, feedback: "Good.", missedPoints: [] });
+      const session = await startChallengeQuiz();
+      const longCode = `${solution}\n// ${"x".repeat(6000)}`;
+
+      await expect(answer(session.questions[0]!.id, longCode)).resolves.toBeDefined();
+      await expect(answer(session.questions[2]!.id, "y".repeat(4001))).rejects.toBeInstanceOf(
+        ValidationError,
+      );
     });
   });
 });

@@ -1,6 +1,21 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeCode, splitInlineCode } from "./code-format";
+import { detectIndent, normalizeCode, splitInlineCode } from "./code-format";
+
+describe("detectIndent", () => {
+  it("uses tabs when the code is tab-indented, as Go is", () => {
+    expect(detectIndent("func f() {\n\treturn\n}")).toBe("\t");
+  });
+
+  it("matches the code's space width", () => {
+    expect(detectIndent("def f():\n    return 1")).toBe("    ");
+    expect(detectIndent("function f() {\n  return 1;\n}")).toBe("  ");
+  });
+
+  it("defaults to two spaces for unindented code", () => {
+    expect(detectIndent("const x = 1;")).toBe("  ");
+  });
+});
 
 describe("normalizeCode", () => {
   it("trims blank edges, trailing spaces and Windows line endings", () => {
