@@ -38,18 +38,7 @@ Let the app use an Anthropic API key as well as the Claude subscription (Claude 
 - **Open questions:** one key for the app or a key per profile (recommended, needs B13)? Is the
   env var enough, or do you want the settings page too? Which model or models with an API key?
 
-### B2. Delete a subtopic — `todo` · S
-
-- `deleteSubtopicAction` → `SubtopicService.deleteSubtopic` → repository delete, plus a confirm
-  button on the subtopic page (mirror `delete-topic-button.tsx`).
-- **Decided:** only subtopics with no answered questions can be deleted, so no quiz history is
-  ever lost. If any of its concepts has an attempt, hide the button (or disable it with a short
-  reason). Re-check on the server, not just in the UI.
-- A subtopic whose quizzes were generated but never answered can still be deleted. Its
-  unanswered questions cascade away with the concepts.
-- Keep at least one subtopic per topic.
-
-### B3. Coding challenges in quizzes — `todo` · L
+### B3. Coding challenges in quizzes — `in progress` · L
 
 A new question type `coding_challenge`: "write a function that…", with starter code.
 
@@ -109,10 +98,17 @@ Full-text search across generated lessons and key takeaways (SQLite FTS5).
 
 ## In progress
 
-Nothing in progress.
+### B3. Coding challenges in quizzes
+
+See the spec under **Requested**.
 
 ## Done
 
+- **B2.** Delete a subtopic. Allowed only when none of its questions was ever answered or
+  skipped, and never for a topic's last subtopic, both re-checked inside the delete transaction.
+  Quizzes that contained its unanswered questions are cleaned up: deleted if left empty,
+  completed if every remaining question is answered.
+  [PR #8](https://github.com/sdhiren/learning-assistant/pull/8)
 - **B1 + B5.** Learner instructions for quizzes and lessons, including "Rewrite lesson" with
   instructions. Saved with the quiz and the lesson; migration `0003` only adds columns.
   [PR #5](https://github.com/sdhiren/learning-assistant/pull/5)

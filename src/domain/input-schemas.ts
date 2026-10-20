@@ -62,6 +62,8 @@ export const addSubtopicInput = z.object({
 });
 export type AddSubtopicInput = z.infer<typeof addSubtopicInput>;
 
+export const deleteSubtopicInput = z.object({ topicId: id, subtopicId: id });
+
 /** What a quiz concentrates on. */
 export type QuizFocus =
   { kind: "weak_spots" } | { kind: "concept"; id: string } | { kind: "subtopic"; id: string };

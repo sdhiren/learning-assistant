@@ -6,8 +6,10 @@ import { ConceptList } from "@/components/topics/concept-list";
 import { StartQuizForm } from "@/components/topics/start-quiz-form";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { Card, CardTitle } from "@/components/ui/card";
+import { ConfirmDeleteButton } from "@/components/ui/confirm-delete-button";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { formatPercent } from "@/lib/format";
+import { deleteSubtopicAction } from "@/server/actions/subtopic-actions";
 import { getServices } from "@/server/container";
 import { orNotFound } from "@/server/or-not-found";
 
@@ -73,6 +75,32 @@ export default async function SubtopicPage(props: SubtopicPageProps) {
           />
         </Card>
       </div>
+
+      <section
+        aria-labelledby="delete-subtopic-heading"
+        className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-danger/30 p-5"
+      >
+        <div className="max-w-xl">
+          <h2 id="delete-subtopic-heading" className="font-semibold">
+            Delete subtopic
+          </h2>
+          <p className="text-sm text-muted">
+            {subtopic.deletion.allowed
+              ? "Removes its concepts and lessons. Unanswered questions about it are removed from quizzes in progress."
+              : subtopic.deletion.reason}
+          </p>
+        </div>
+        {subtopic.deletion.allowed && (
+          <ConfirmDeleteButton
+            label="Delete subtopic"
+            confirmation={`Delete “${subtopic.name}” for good?`}
+            action={deleteSubtopicAction.bind(null, {
+              topicId: subtopic.topicId,
+              subtopicId: subtopic.id,
+            })}
+          />
+        )}
+      </section>
     </div>
   );
 }

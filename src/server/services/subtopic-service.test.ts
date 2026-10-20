@@ -152,4 +152,126 @@ describe("SubtopicService", () => {
       ).rejects.toBeInstanceOf(NotFoundError);
     });
   });
+
+  describe("deleteSubtopic", () => {
+    function subtopicsOf(id: string) {
+      return app.topics.getTopicOverview(id).subtopics;
+    }
+
+    /** Starts a quiz whose questions cover the given concepts, one question each. */
+    async function startQuizOn(conceptIds: string[]) {
+      app.llm.respondTo("generate-quiz", {
+        questions: conceptIds.map((id) => multipleChoiceQuestion(id)),
+      });
+      const quizId = await app.quizzes.startQuiz({
+        topicId,
+        difficulty: "easy",
+        questionCount: 5,
+        focus: { kind: "weak_spots" },
+        instructions: "",
+      });
+      return app.quizzes.getQuizSession(quizId);
+    }
+
+    it("deletes an unpractised subtopic with its concepts and lessons", async () => {
+      const [, modules] = subtopicsOf(topicId);
+      const conceptId = modules!.concepts[0]!.id;
+      app.llm.respondTo("generate-reading", {
+        markdown: "## Big idea",
+        keyTakeaways: ["a", "b", "c"],
+      });
+      await app.readings.generateReading({ topicId, conceptId, instructions: "" });
+
+      expect(app.subtopics.getSubtopic(topicId, modules!.id).deletion).toEqual({ allowed: true });
+      app.subtopics.deleteSubtopic(topicId, modules!.id);
+
+      expect(subtopicsOf(topicId).map((subtopic) => subtopic.name)).toEqual([
+        "Runtime",
+        "Performance",
+      ]);
+      expect(() => app.readings.getReading(topicId, conceptId)).toThrow(NotFoundError);
+      expect(app.topics.listTopics()[0]!.conceptCount).toBe(4);
+    });
+
+    it("keeps a subtopic that has an answered question", async () => {
+      const [runtime] = subtopicsOf(topicId);
+      const session = await startQuizOn(
+        runtime!.concepts
+          .map((concept) => concept.id)
+          .concat(subtopicsOf(topicId)[1]!.concepts.map((concept) => concept.id)),
+      );
+      await app.quizzes.submitAnswer({
+        questionId: session.questions[0]!.id,
+        answer: "1",
+        timeTakenMs: 1000,
+      });
+
+      expect(app.subtopics.getSubtopic(topicId, runtime!.id).deletion).toMatchObject({
+        allowed: false,
+      });
+      expect(() => app.subtopics.deleteSubtopic(topicId, runtime!.id)).toThrow(ConflictError);
+      expect(subtopicsOf(topicId)).toHaveLength(3);
+    });
+
+    it("counts skipped questions as history too", async () => {
+      const [runtime, modules] = subtopicsOf(topicId);
+      const session = await startQuizOn(
+        [...runtime!.concepts, ...modules!.concepts].map((concept) => concept.id),
+      );
+      app.quizzes.finishQuiz(session.id);
+
+      expect(() => app.subtopics.deleteSubtopic(topicId, runtime!.id)).toThrow(ConflictError);
+    });
+
+    it("removes its unanswered questions and completes a quiz that is now fully answered", async () => {
+      const [runtime, modules] = subtopicsOf(topicId);
+      const runtimeIds = runtime!.concepts.map((concept) => concept.id);
+      const moduleIds = modules!.concepts.map((concept) => concept.id);
+      const session = await startQuizOn([...runtimeIds, ...moduleIds]);
+      // Answer every question about "Runtime"; leave the "Modules" ones unanswered.
+      for (const question of session.questions.slice(0, runtimeIds.length)) {
+        await app.quizzes.submitAnswer({ questionId: question.id, answer: "1", timeTakenMs: 1000 });
+      }
+
+      app.subtopics.deleteSubtopic(topicId, modules!.id);
+
+      expect(app.quizzes.getQuizSession(session.id)).toMatchObject({
+        status: "completed",
+        score: 1,
+      });
+      expect(app.quizzes.getQuizSession(session.id).questions).toHaveLength(runtimeIds.length);
+    });
+
+    it("deletes a quiz left with no questions", async () => {
+      const [, modules] = subtopicsOf(topicId);
+      const session = await startQuizOn([
+        ...modules!.concepts.map((concept) => concept.id),
+        modules!.concepts[0]!.id,
+      ]);
+
+      app.subtopics.deleteSubtopic(topicId, modules!.id);
+
+      expect(() => app.quizzes.getQuizSession(session.id)).toThrow(NotFoundError);
+      expect(app.topics.getTopicOverview(topicId).inProgressQuizId).toBeNull();
+    });
+
+    it("never deletes a topic's last subtopic", async () => {
+      const [runtime, modules, performance] = subtopicsOf(topicId);
+      app.subtopics.deleteSubtopic(topicId, modules!.id);
+      app.subtopics.deleteSubtopic(topicId, performance!.id);
+
+      expect(app.subtopics.getSubtopic(topicId, runtime!.id).deletion).toMatchObject({
+        allowed: false,
+        reason: "A topic needs at least one subtopic.",
+      });
+      expect(() => app.subtopics.deleteSubtopic(topicId, runtime!.id)).toThrow(ConflictError);
+    });
+
+    it("refuses a subtopic requested through a different topic", async () => {
+      const otherTopicId = await app.topics.createTopic({ name: "Deno", goal: "" });
+      const foreignId = subtopicsOf(otherTopicId)[0]!.id;
+      expect(() => app.subtopics.deleteSubtopic(topicId, foreignId)).toThrow(NotFoundError);
+      expect(subtopicsOf(otherTopicId)).toHaveLength(3);
+    });
+  });
 });
