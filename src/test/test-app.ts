@@ -111,3 +111,19 @@ export function shortAnswerQuestion(conceptId: string) {
     explanation: "Streams pause when the buffer is full.",
   } satisfies GeneratedQuestion;
 }
+
+export function codingChallengeQuestion(conceptId: string) {
+  return {
+    conceptId,
+    type: "coding_challenge",
+    prompt: "Write `sumEven(nums)` that returns the sum of the even numbers.",
+    code: "function sumEven(nums) {\n  // TODO\n}",
+    codeLanguage: "JavaScript",
+    options: [],
+    correctOptionIndex: null,
+    expectedAnswer:
+      "function sumEven(nums) {\n  return nums.filter((n) => n % 2 === 0).reduce((a, b) => a + b, 0);\n}",
+    rubric: ["Returns the correct sum", "Handles an empty array", "Runs in O(n)"],
+    explanation: "Filter the even numbers, then add them up in one pass.",
+  } satisfies GeneratedQuestion;
+}

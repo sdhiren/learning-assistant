@@ -3,6 +3,8 @@ import { MULTIPLE_CHOICE_OPTION_COUNT, type QuestionDraft } from "@/domain/quest
 import type { GeneratedQuestion } from "@/server/ai/schemas";
 
 const MAX_RUBRIC_POINTS = 6;
+/** Correctness, edge cases and complexity at minimum. */
+const MIN_CODING_RUBRIC_POINTS = 2;
 const MAX_CODE_LANGUAGE_LENGTH = 30;
 
 /**
@@ -48,6 +50,29 @@ export function toQuestionDraft(
     case "code_output": {
       const expectedAnswer = nonEmpty(generated.expectedAnswer);
       return code && expectedAnswer ? { ...base, type: "code_output", code, expectedAnswer } : null;
+    }
+    case "coding_challenge": {
+      const solution = nonEmpty(
+        generated.expectedAnswer && normalizeCode(generated.expectedAnswer),
+      );
+      const rubric = generated.rubric.map((point) => point.trim()).filter(Boolean);
+      const isValid =
+        code &&
+        codeLanguage &&
+        solution &&
+        solution !== code &&
+        rubric.length >= MIN_CODING_RUBRIC_POINTS &&
+        rubric.length <= MAX_RUBRIC_POINTS;
+      return isValid
+        ? {
+            ...base,
+            type: "coding_challenge",
+            code,
+            codeLanguage,
+            expectedAnswer: solution,
+            rubric,
+          }
+        : null;
     }
   }
 }

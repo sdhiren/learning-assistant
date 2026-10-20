@@ -50,3 +50,9 @@ export function splitInlineCode(text: string): InlineSegment[] {
   if (lastIndex < text.length) segments.push({ kind: "text", value: text.slice(lastIndex) });
   return segments;
 }
+
+/** The indentation a snippet uses: a tab (e.g. Go), its space width, or two spaces. */
+export function detectIndent(code: string): string {
+  if (/^\t/m.test(code)) return "\t";
+  return /^( {2,8})\S/m.exec(code)?.[1] ?? "  ";
+}

@@ -6,6 +6,7 @@ import {
   addSubtopicInput,
   createTopicInput,
   encodeQuizFocus,
+  maxAnswerLength,
   startQuizInput,
   submitAnswerInput,
 } from "./input-schemas";
@@ -85,12 +86,22 @@ describe("addSubtopicInput", () => {
   });
 });
 
+describe("maxAnswerLength", () => {
+  it("gives coding challenges more room than other answers", () => {
+    expect(maxAnswerLength("coding_challenge")).toBe(12_000);
+    expect(maxAnswerLength("short_answer")).toBe(4000);
+    expect(maxAnswerLength("code_output")).toBe(4000);
+  });
+});
+
 describe("submitAnswerInput", () => {
   const base = { questionId: randomUUID(), answer: "42", timeTakenMs: 1200 };
 
   it("rejects blank and oversized answers", () => {
     expect(submitAnswerInput.safeParse({ ...base, answer: "   " }).success).toBe(false);
-    expect(submitAnswerInput.safeParse({ ...base, answer: "x".repeat(4001) }).success).toBe(false);
+    expect(submitAnswerInput.safeParse({ ...base, answer: "x".repeat(12_001) }).success).toBe(
+      false,
+    );
   });
 
   it("falls back to 0 for an implausible answer time", () => {

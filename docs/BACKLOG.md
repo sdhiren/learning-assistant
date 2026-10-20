@@ -38,20 +38,6 @@ Let the app use an Anthropic API key as well as the Claude subscription (Claude 
 - **Open questions:** one key for the app or a key per profile (recommended, needs B13)? Is the
   env var enough, or do you want the settings page too? Which model or models with an API key?
 
-### B3. Coding challenges in quizzes — `in progress` · L
-
-A new question type `coding_challenge`: "write a function that…", with starter code.
-
-- Add to `QUESTION_TYPES`, the AI schema, `question-validation.ts` and the quiz prompt
-  ("include one when the topic involves code and the difficulty is medium or higher").
-- Fields: prompt, starter code, language, reference solution, rubric (correctness, edge cases,
-  complexity), explanation. The reference solution stays server-side until answered.
-- Answer UI: a code editor area (monospace textarea first; a real editor like CodeMirror later).
-- **Decided:** Claude grades the code through the existing `LlmClient` (Claude Code / Agent
-  SDK). It reviews the solution against the rubric and reference solution and returns a score
-  plus feedback on correctness, edge cases and complexity. Learner code is not executed.
-- Allow longer answers than `ANSWER_MAX_LENGTH` for this type, and maybe a longer time budget.
-
 ## Proposed
 
 ### B4. Report a wrong question — `todo` · S
@@ -98,12 +84,17 @@ Full-text search across generated lessons and key takeaways (SQLite FTS5).
 
 ## In progress
 
-### B3. Coding challenges in quizzes
-
-See the spec under **Requested**.
+Nothing in progress.
 
 ## Done
 
+- **B3.** Coding challenges. A new `coding_challenge` question type, with at most one per quiz,
+  only for coding topics at Medium difficulty and above. Starter code is pre-filled in a
+  monospace editor (Tab indents to match the starter code; Esc then Tab leaves the editor).
+  Claude reviews the solution against the rubric and the reference solution for correctness,
+  edge cases and complexity; learner code is never executed. The reference solution and rubric
+  stay server-side until the question is answered. Solutions may be up to 12,000 characters.
+  No migration needed. [PR #9](https://github.com/sdhiren/learning-assistant/pull/9)
 - **B2.** Delete a subtopic. Allowed only when none of its questions was ever answered or
   skipped, and never for a topic's last subtopic, both re-checked inside the delete transaction.
   Quizzes that contained its unanswered questions are cleaned up: deleted if left empty,

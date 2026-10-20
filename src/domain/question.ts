@@ -1,4 +1,9 @@
-export const QUESTION_TYPES = ["multiple_choice", "short_answer", "code_output"] as const;
+export const QUESTION_TYPES = [
+  "multiple_choice",
+  "short_answer",
+  "code_output",
+  "coding_challenge",
+] as const;
 
 export type QuestionType = (typeof QUESTION_TYPES)[number];
 
@@ -6,6 +11,7 @@ export const QUESTION_TYPE_LABELS: Readonly<Record<QuestionType, string>> = {
   multiple_choice: "Multiple choice",
   short_answer: "Short answer",
   code_output: "What does this code print?",
+  coding_challenge: "Coding challenge",
 };
 
 export const MULTIPLE_CHOICE_OPTION_COUNT = 4;
@@ -43,5 +49,22 @@ export interface CodeOutputQuestion extends QuestionBase {
   expectedAnswer: string;
 }
 
+/**
+ * "Write a function that…". The learner edits the starter code; Claude
+ * reviews the solution against the rubric and reference solution. Learner
+ * code is never executed.
+ */
+export interface CodingChallengeQuestion extends QuestionBase {
+  type: "coding_challenge";
+  /** Starter code: the signature and a short TODO, never the solution. */
+  code: string;
+  codeLanguage: string;
+  /** A complete reference solution, revealed only after answering. */
+  expectedAnswer: string;
+  /** What the reviewer checks: correctness, edge cases, complexity. */
+  rubric: string[];
+}
+
 /** A fully validated question, ready to be stored. */
-export type QuestionDraft = MultipleChoiceQuestion | ShortAnswerQuestion | CodeOutputQuestion;
+export type QuestionDraft =
+  MultipleChoiceQuestion | ShortAnswerQuestion | CodeOutputQuestion | CodingChallengeQuestion;

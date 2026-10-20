@@ -8,8 +8,12 @@ interface AnswerFeedbackProps {
   result: AnswerResultView;
   /** Multiple-choice questions already highlight the correct option. */
   showCorrectAnswer: boolean;
-  /** Code-output answers are program output, shown verbatim in a code block. */
-  correctAnswerIsCode: boolean;
+  /**
+   * How to show the correct answer: prose, program output (verbatim), or a
+   * reference solution highlighted in `codeLanguage`.
+   */
+  correctAnswerFormat: "prose" | "output" | "solution";
+  codeLanguage?: string | null;
 }
 
 const TONE_CLASSES = {
@@ -23,7 +27,8 @@ const TONE_ICONS = { correct: "✓", incorrect: "✗", skipped: "→" } as const
 export function AnswerFeedback({
   result,
   showCorrectAnswer,
-  correctAnswerIsCode,
+  correctAnswerFormat,
+  codeLanguage,
 }: AnswerFeedbackProps) {
   const isPartial = result.isCorrect && result.score < 1;
   const tone = result.skipped ? "skipped" : result.isCorrect ? "correct" : "incorrect";
@@ -60,14 +65,21 @@ export function AnswerFeedback({
       {showCorrectAnswer && (
         <div className="space-y-1.5">
           <h2 className="text-sm font-semibold text-ink">
-            {result.skipped ? "Answer" : "Model answer"}
+            {correctAnswerFormat === "solution"
+              ? "Reference solution"
+              : result.skipped
+                ? "Answer"
+                : "Model answer"}
           </h2>
-          {correctAnswerIsCode ? (
-            <CodeBlock code={result.correctAnswer} language="text" />
-          ) : (
+          {correctAnswerFormat === "prose" ? (
             <p className="text-sm leading-relaxed whitespace-pre-line text-ink">
               <InlineCodeText text={result.correctAnswer} />
             </p>
+          ) : (
+            <CodeBlock
+              code={result.correctAnswer}
+              language={correctAnswerFormat === "solution" ? (codeLanguage ?? "text") : "text"}
+            />
           )}
         </div>
       )}

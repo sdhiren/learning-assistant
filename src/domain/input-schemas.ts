@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { DIFFICULTIES } from "./difficulty";
+import type { QuestionType } from "./question";
 
 /** Validation for everything a user can submit. Shared by server actions and forms. */
 
@@ -10,6 +11,8 @@ export const SUBTOPIC_NAME_MAX_LENGTH = 80;
 export const SUBTOPIC_NOTES_MAX_LENGTH = 300;
 export const INSTRUCTIONS_MAX_LENGTH = 300;
 export const ANSWER_MAX_LENGTH = 4000;
+/** Coding-challenge solutions are code, so they get more room. */
+export const CODE_ANSWER_MAX_LENGTH = 12_000;
 export const QUESTION_COUNT_OPTIONS = [5, 10] as const;
 
 const MAX_ANSWER_TIME_MS = 60 * 60 * 1000;
@@ -114,10 +117,16 @@ export const submitAnswerInput = z.object({
   questionId: id,
   answer: z
     .string()
-    .max(ANSWER_MAX_LENGTH, `Answers are limited to ${ANSWER_MAX_LENGTH} characters.`)
+    // The per-type limit (see maxAnswerLength) is enforced once the question is known.
+    .max(CODE_ANSWER_MAX_LENGTH, `Answers are limited to ${CODE_ANSWER_MAX_LENGTH} characters.`)
     .refine((value) => value.trim().length > 0, { message: "Enter an answer first." }),
   timeTakenMs: z.number().int().min(0).max(MAX_ANSWER_TIME_MS).catch(0),
 });
 export type SubmitAnswerInput = z.infer<typeof submitAnswerInput>;
 
 export const finishQuizInput = z.object({ quizId: id });
+
+/** The longest answer accepted for a question type. */
+export function maxAnswerLength(type: QuestionType): number {
+  return type === "coding_challenge" ? CODE_ANSWER_MAX_LENGTH : ANSWER_MAX_LENGTH;
+}

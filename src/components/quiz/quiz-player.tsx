@@ -108,7 +108,7 @@ export function QuizPlayer({ quiz }: { quiz: QuizSessionView }) {
         <QuestionCard
           key={current.id}
           question={current}
-          draft={drafts[current.id] ?? ""}
+          draft={drafts[current.id] ?? initialDraft(current)}
           onDraftChange={(value) => setDrafts((previous) => ({ ...previous, [current.id]: value }))}
           getTimeSpent={getTimeSpent}
           onTimeSpent={addTimeSpent}
@@ -135,4 +135,9 @@ export function QuizPlayer({ quiz }: { quiz: QuizSessionView }) {
 function firstUnansweredIndex(questions: readonly QuizQuestionView[]): number {
   const index = questions.findIndex((question) => !question.result);
   return index === -1 ? questions.length : index;
+}
+
+/** Coding challenges start from their starter code; other answers start empty. */
+function initialDraft(question: QuizQuestionView): string {
+  return question.type === "coding_challenge" ? (question.code ?? "") : "";
 }
