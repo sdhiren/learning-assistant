@@ -90,7 +90,18 @@ function matchesWithTypos(answer: string, expected: string): boolean {
   });
 }
 
-export function gradeCodeOutput(answer: string, expected: string): GradeResult {
+/** Ignores line layout too: every line break and run of spaces counts as one space. */
+function flattenedOutput(output: string): string {
+  return looseOutput(output).replace(/\s+/g, " ");
+}
+
+/**
+ * Grades a "what does this code print?" answer with fast, deterministic
+ * rules, from exact match down to small slips. Returns null when no rule
+ * matches; the caller then asks Claude to judge partial understanding, so a
+ * mostly-right answer never scores 0 just for not matching exactly.
+ */
+export function gradeCodeOutput(answer: string, expected: string): GradeResult | null {
   if (normalizeOutput(answer) === normalizeOutput(expected)) {
     return { score: 1, isCorrect: true, feedback: "Exactly right." };
   }
@@ -101,6 +112,15 @@ export function gradeCodeOutput(answer: string, expected: string): GradeResult {
       feedback: "Right values. Check the exact formatting (quotes, spacing or case).",
     };
   }
+  if (flattenedOutput(answer) === flattenedOutput(expected)) {
+    return {
+      score: 0.8,
+      isCorrect: true,
+      feedback:
+        "Right values in the right order, but the line breaks differ. Check which calls " +
+        "print a newline (for example `Print` versus `Println`) and which don't.",
+    };
+  }
   if (matchesWithTypos(answer, expected)) {
     return {
       score: 0.75,
@@ -109,7 +129,7 @@ export function gradeCodeOutput(answer: string, expected: string): GradeResult {
         "Right values, with a small spelling slip. Compare your text with the model answer.",
     };
   }
-  return { score: 0, isCorrect: false, feedback: "That's not what this code prints." };
+  return null;
 }
 
 export function clampScore(score: number): number {

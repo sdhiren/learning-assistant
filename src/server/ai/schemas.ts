@@ -94,6 +94,19 @@ export const codeReviewSchema = z.object({
 });
 export type CodeReviewOutput = z.infer<typeof codeReviewSchema>;
 
+export const outputJudgementSchema = z.object({
+  score: z
+    .number()
+    .min(0)
+    .max(1)
+    .describe("0 to 1, by how much of the program's behaviour the learner predicted correctly."),
+  feedback: z
+    .string()
+    .min(1)
+    .describe("Two to four sentences: what was right, what differs, and the reason it differs."),
+});
+export type OutputJudgementOutput = z.infer<typeof outputJudgementSchema>;
+
 export const shortAnswerGradeSchema = z.object({
   score: z.number().min(0).max(1).describe("0 to 1. 1 = covers every rubric point accurately."),
   feedback: z.string().min(1).describe("Two or three sentences of direct, constructive feedback."),

@@ -189,6 +189,45 @@ export function buildShortAnswerGradingPrompt(input: {
   };
 }
 
+export function buildOutputGradingPrompt(input: {
+  topicName: string;
+  difficulty: Difficulty;
+  question: string;
+  code: string;
+  language: string;
+  expectedOutput: string;
+  learnerOutput: string;
+}): Prompt {
+  return {
+    systemPrompt:
+      `${PERSONA} You grade "what does this code print?" answers by understanding, not by ` +
+      `exact text: the point is whether the learner can predict how the program behaves.` +
+      `\n\n${DATA_HANDLING_RULE}`,
+    prompt: [
+      "The learner's predicted output doesn't exactly match the real output. Judge how much " +
+        "of the program's behaviour they understood.",
+      tagged("topic", input.topicName),
+      `Difficulty: ${input.difficulty}. Language: ${input.language}.`,
+      tagged("question", input.question),
+      tagged("code", input.code),
+      tagged("expected_output", input.expectedOutput),
+      tagged("learner_output", input.learnerOutput),
+      [
+        "Scoring guide:",
+        "- 0.8 to 0.9: every value right and in order; only presentation differs (layout, " +
+          "spacing, quoting, number formatting).",
+        "- 0.5 to 0.8: the key behaviour the question tests is right, with one wrong value " +
+          "or a small ordering slip elsewhere.",
+        "- 0.2 to 0.5: partly right, but the concept the question tests was misunderstood.",
+        "- 0 to 0.2: wrong, unrelated, or empty.",
+        "Explain the specific reason the real output differs from the learner's (which line " +
+          "or rule causes it). Address the learner as 'you'. Plain text, not Markdown; wrap " +
+          "identifiers in `backticks`.",
+      ].join("\n"),
+    ].join("\n\n"),
+  };
+}
+
 export function buildCodeReviewPrompt(input: {
   topicName: string;
   difficulty: Difficulty;
