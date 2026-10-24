@@ -1,5 +1,6 @@
 "use client";
 
+import { useAiProvider } from "@/components/ai-provider-context";
 import { useFormAction } from "@/components/hooks/use-form-action";
 import { Alert } from "@/components/ui/alert";
 import { GenerationProgress } from "@/components/ui/generation-progress";
@@ -39,6 +40,7 @@ const DEFAULT_DIFFICULTY: Difficulty = "medium";
 
 export function StartQuizForm({ topicId, focusOptions, fixedFocus }: StartQuizFormProps) {
   const { result: state, values, formAction, pending } = useFormAction(startQuizAction);
+  const { label } = useAiProvider();
   const selectedDifficulty = values.difficulty ?? DEFAULT_DIFFICULTY;
   const selectedCount = values.questionCount ?? String(QUESTION_COUNT_OPTIONS[0]);
 
@@ -132,7 +134,7 @@ export function StartQuizForm({ topicId, focusOptions, fixedFocus }: StartQuizFo
       </SubmitButton>
       {pending && (
         <GenerationProgress
-          message="Claude is writing your questions"
+          message={`${label} is writing your questions`}
           expected="20 to 60 seconds"
         />
       )}

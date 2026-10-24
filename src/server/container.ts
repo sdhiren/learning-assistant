@@ -1,7 +1,10 @@
 import "server-only";
 
+import { AnthropicApiClient } from "@/server/ai/anthropic-api-client";
 import { ClaudeAgentClient } from "@/server/ai/claude-agent-client";
-import { getEnv } from "@/server/config/env";
+import type { LlmClient } from "@/server/ai/llm-client";
+import { PROVIDERS, type ProviderId } from "@/server/ai/providers";
+import { getAiConfig, getEnv, type AiConfig } from "@/server/config/env";
 import { createDatabase, type AppDatabase } from "@/server/db/client";
 import { QuizRepository } from "@/server/repositories/quiz-repository";
 import { ReadingRepository } from "@/server/repositories/reading-repository";
@@ -31,10 +34,44 @@ function getDatabase(): AppDatabase {
   return globalForDb.__learningAssistantDb;
 }
 
+/** Builds the client for the configured provider. Env validation rejects unimplemented ones. */
+export function createLlmClient(config: AiConfig): LlmClient {
+  switch (config.provider) {
+    case "claude-code":
+      return new ClaudeAgentClient({ model: config.model, timeoutMs: config.timeoutMs });
+    case "anthropic":
+      if (!config.apiKey) throw new Error("AI_PROVIDER=anthropic needs ANTHROPIC_API_KEY");
+      return new AnthropicApiClient({
+        apiKey: config.apiKey,
+        model: config.model,
+        timeoutMs: config.timeoutMs,
+      });
+    case "openai":
+    case "gemini":
+      throw new Error(`AI_PROVIDER=${config.provider} is not available yet`);
+    default: {
+      const unknown: never = config.provider;
+      throw new Error(`Unknown AI_PROVIDER: ${String(unknown)}`);
+    }
+  }
+}
+
+export interface AiProviderInfo {
+  id: ProviderId;
+  label: string;
+  usageNote: string;
+}
+
+/** The active provider's display data for the UI. Plain, serializable, and never the key. */
+export function getAiProviderInfo(): AiProviderInfo {
+  const { provider } = getAiConfig();
+  const { label, usageNote } = PROVIDERS[provider];
+  return { id: provider, label, usageNote };
+}
+
 function createServices(): Services {
-  const env = getEnv();
   const db = getDatabase();
-  const llm = new ClaudeAgentClient({ model: env.CLAUDE_MODEL, timeoutMs: env.AI_TIMEOUT_MS });
+  const llm = createLlmClient(getAiConfig());
 
   const topicRepository = new TopicRepository(db);
   const quizRepository = new QuizRepository(db);

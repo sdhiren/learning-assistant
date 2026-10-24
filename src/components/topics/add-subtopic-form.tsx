@@ -1,5 +1,6 @@
 "use client";
 
+import { useAiProvider } from "@/components/ai-provider-context";
 import { useFormAction } from "@/components/hooks/use-form-action";
 import { Alert } from "@/components/ui/alert";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -12,6 +13,7 @@ const inputClasses =
 
 export function AddSubtopicForm({ topicId }: { topicId: string }) {
   const { result, values, formAction, pending } = useFormAction(addSubtopicAction);
+  const { label } = useAiProvider();
   const fieldErrors = result && !result.ok ? result.fieldErrors : undefined;
 
   return (
@@ -70,7 +72,7 @@ export function AddSubtopicForm({ topicId }: { topicId: string }) {
         <SubmitButton pendingLabel="Adding subtopic…">Add subtopic</SubmitButton>
         <p className="text-sm text-muted" aria-live="polite">
           {pending
-            ? "Claude is breaking it into concepts. This usually takes 10 to 30 seconds."
+            ? `${label} is breaking it into concepts. This usually takes 10 to 30 seconds.`
             : ""}
         </p>
       </div>

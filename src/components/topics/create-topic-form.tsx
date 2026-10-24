@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 
+import { useAiProvider } from "@/components/ai-provider-context";
 import { useFormAction } from "@/components/hooks/use-form-action";
 import { Alert } from "@/components/ui/alert";
 import { GenerationProgress } from "@/components/ui/generation-progress";
@@ -25,6 +26,7 @@ const SUGGESTIONS = [
 
 export function CreateTopicForm() {
   const { result: state, values, formAction, pending } = useFormAction(createTopicAction);
+  const { label } = useAiProvider();
   const fieldErrors = state && !state.ok ? state.fieldErrors : undefined;
   const nameRef = useRef<HTMLInputElement>(null);
 
@@ -108,7 +110,7 @@ export function CreateTopicForm() {
       <SubmitButton pendingLabel="Building your skill map…">Create topic</SubmitButton>
       {pending && (
         <GenerationProgress
-          message="Claude is designing your skill map"
+          message={`${label} is designing your skill map`}
           expected="15 to 40 seconds"
         />
       )}
