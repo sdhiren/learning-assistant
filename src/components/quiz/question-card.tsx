@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition, type KeyboardEvent } from "react";
 
+import { useAiProvider } from "@/components/ai-provider-context";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/ui/code-block";
@@ -49,6 +50,7 @@ export function QuestionCard({
 }: QuestionCardProps) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const { label } = useAiProvider();
   const shownAtRef = useRef(0);
   const answeredRef = useRef(Boolean(question.result));
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -186,7 +188,7 @@ export function QuestionCard({
             />
             {!result && (
               <p id={`answer-hint-${question.id}`} className="text-xs text-muted">
-                Claude reviews your code for correctness, edge cases and complexity; it isn&apos;t
+                {label} reviews your code for correctness, edge cases and complexity; it isn&apos;t
                 run. Tab indents (Esc, then Tab, leaves the editor). ⌘/Ctrl + Enter submits.
               </p>
             )}
@@ -239,8 +241,8 @@ export function QuestionCard({
             {pending && (question.type === "short_answer" || isCodingChallenge) && (
               <span className="text-sm text-muted" aria-live="polite">
                 {isCodingChallenge
-                  ? "Claude is reviewing your code. This can take up to a minute."
-                  : "Claude is reviewing your answer…"}
+                  ? `${label} is reviewing your code. This can take up to a minute.`
+                  : `${label} is reviewing your answer…`}
               </span>
             )}
           </div>

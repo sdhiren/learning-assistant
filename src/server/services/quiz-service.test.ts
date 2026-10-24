@@ -109,6 +109,23 @@ describe("QuizService", () => {
       );
     });
 
+    it("names the active provider in the too-few-questions error", async () => {
+      app = createTestApp({ providerLabel: "GPT" });
+      app.llm.respondTo("generate-skill-tree", SAMPLE_SKILL_TREE);
+      const otherTopicId = await app.topics.createTopic({ name: "Go", goal: "" });
+      app.llm.respondTo("generate-quiz", { questions: [multipleChoiceQuestion(randomUUID())] });
+
+      await expect(
+        app.quizzes.startQuiz({
+          topicId: otherTopicId,
+          difficulty: "medium",
+          questionCount: 5,
+          focus: { kind: "weak_spots" },
+          instructions: "",
+        }),
+      ).rejects.toThrow(/^GPT produced too few usable questions/);
+    });
+
     it("marks the topic as studied", async () => {
       await startQuiz(conceptIds.slice(0, 5).map((id) => multipleChoiceQuestion(id)));
       expect(app.topics.listTopics()[0]!.lastStudiedAt).toBeInstanceOf(Date);

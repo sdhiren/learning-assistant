@@ -10,6 +10,8 @@ export class FakeLlmClient implements LlmClient {
   readonly requests: StructuredRequest<unknown>[] = [];
   private readonly responders = new Map<string, Responder>();
 
+  constructor(readonly providerLabel = "Claude") {}
+
   respondTo(task: string, response: unknown | Responder): this {
     this.responders.set(
       task,

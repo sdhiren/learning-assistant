@@ -14,9 +14,12 @@ export interface StructuredRequest<T> {
 
 /**
  * The application's only dependency on a language model. Services depend on
- * this interface, so the provider can be swapped (e.g. Agent SDK vs. API key)
- * and tests can use a fake.
+ * this interface, so the provider can be swapped (Claude subscription, an
+ * Anthropic API key, later OpenAI or Gemini; see `providers.ts`) and tests can
+ * use a fake.
  */
 export interface LlmClient {
+  /** Name for user-facing copy, e.g. "Claude" or "GPT". */
+  readonly providerLabel: string;
   generateStructured<T>(request: StructuredRequest<T>): Promise<T>;
 }

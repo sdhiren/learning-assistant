@@ -13,9 +13,9 @@ import { TopicService } from "@/server/services/topic-service";
 import { FakeLlmClient } from "./fake-llm-client";
 
 /** Wires the real services to an in-memory database and a fake LLM. */
-export function createTestApp() {
+export function createTestApp({ providerLabel = "Claude" }: { providerLabel?: string } = {}) {
   const db = createDatabase(":memory:");
-  const llm = new FakeLlmClient();
+  const llm = new FakeLlmClient(providerLabel);
   let clock = new Date("2026-01-01T10:00:00Z").getTime();
   const now = () => new Date((clock += 1000));
 

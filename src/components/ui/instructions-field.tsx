@@ -2,6 +2,7 @@
 
 import { useState, type TextareaHTMLAttributes } from "react";
 
+import { useAiProvider } from "@/components/ai-provider-context";
 import { INSTRUCTIONS_MAX_LENGTH } from "@/domain/input-schemas";
 
 interface InstructionsFieldProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -23,15 +24,16 @@ export function InstructionsField({
 }: InstructionsFieldProps) {
   // Start open when there's already text (e.g. after a failed submit), then let the learner decide.
   const [open, setOpen] = useState(() => Boolean(value ?? defaultValue));
+  const { label } = useAiProvider();
 
   return (
     <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
       <summary className="cursor-pointer text-sm font-medium text-accent select-none hover:underline">
-        Add instructions for Claude <span className="font-normal text-muted">(optional)</span>
+        Add instructions for {label} <span className="font-normal text-muted">(optional)</span>
       </summary>
       <div className="mt-2 space-y-1.5">
         <label htmlFor={id} className="sr-only">
-          Instructions for Claude
+          Instructions for {label}
         </label>
         <textarea
           id={id}
@@ -45,7 +47,7 @@ export function InstructionsField({
           {...props}
         />
         <p className="text-xs text-muted">
-          A preference, not an override: Claude still follows its usual rules for accuracy and
+          A preference, not an override: {label} still follows its usual rules for accuracy and
           format.
         </p>
       </div>

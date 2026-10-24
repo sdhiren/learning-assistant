@@ -13,7 +13,7 @@ import { BookIcon } from "@/components/ui/icons";
 import { MasteryBadge } from "@/components/ui/mastery-badge";
 import { formatPercent, formatRelativeDate } from "@/lib/format";
 import { extractOutline } from "@/lib/lesson-outline";
-import { getServices } from "@/server/container";
+import { getAiProviderInfo, getServices } from "@/server/container";
 import { orNotFound } from "@/server/or-not-found";
 
 type ConceptPageProps = PageProps<"/topics/[topicId]/concepts/[conceptId]">;
@@ -111,8 +111,8 @@ export default async function ConceptPage(props: ConceptPageProps) {
             <div className="space-y-4 py-6 text-center">
               <h2 className="text-lg font-semibold">No lesson yet</h2>
               <p className="mx-auto max-w-md text-muted">
-                Claude will write a short, interview-focused lesson on this concept: how it works,
-                pitfalls and how interviewers probe it.
+                {getAiProviderInfo().label} will write a short, interview-focused lesson on this
+                concept: how it works, pitfalls and how interviewers probe it.
               </p>
               <GenerateReadingButton topicId={reading.topicId} conceptId={reading.conceptId} />
             </div>

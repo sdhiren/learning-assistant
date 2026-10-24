@@ -4,9 +4,10 @@ A local, Claude-powered study companion for **technical interview prep**. Pick a
 Claude builds a skill map for it, quizzes you at the difficulty you choose, grades your answers,
 writes focused lessons, and tracks which concepts you still need to practise.
 
-Everything runs on your own machine. Your progress is stored in a local SQLite file, and Claude
-is reached through the Claude Code login on this computer, so it uses your Claude subscription
-rather than a separate API bill.
+Everything runs on your own machine. Your progress is stored in a local SQLite file. By default
+Claude is reached through the Claude Code login on this computer, so it uses your Claude
+subscription rather than a separate API bill; you can switch to an Anthropic API key instead
+(see [Choosing a provider](#choosing-a-provider)).
 
 ## Features (Phase 1)
 
@@ -66,17 +67,29 @@ automatically by `make dev` and `make start`.
 
 All settings are optional. Copy `.env.example` to `.env.local` to change them.
 
-| Variable        | Default                        | Purpose                                  |
-| --------------- | ------------------------------ | ---------------------------------------- |
-| `DATABASE_PATH` | `./data/learning-assistant.db` | Where your progress is stored            |
-| `CLAUDE_MODEL`  | `claude-opus-5-5`              | Model used for generation and grading    |
-| `AI_TIMEOUT_MS` | `180000`                       | Maximum time for a single Claude request |
+| Variable            | Default                        | Purpose                                                                  |
+| ------------------- | ------------------------------ | ------------------------------------------------------------------------ |
+| `DATABASE_PATH`     | `./data/learning-assistant.db` | Where your progress is stored                                            |
+| `AI_PROVIDER`       | `claude-code`                  | `claude-code` (your Claude subscription) or `anthropic` (API key)        |
+| `AI_MODEL`          | provider default               | Model used for generation and grading (`claude-opus-5-5` for both today) |
+| `ANTHROPIC_API_KEY` | none                           | Required when `AI_PROVIDER=anthropic`; ignored in `claude-code` mode     |
+| `OPENAI_API_KEY`    | none                           | Reserved for the upcoming `openai` provider                              |
+| `GEMINI_API_KEY`    | none                           | Reserved for the upcoming `gemini` provider                              |
+| `CLAUDE_MODEL`      | none                           | Deprecated alias for `AI_MODEL` (Claude providers only)                  |
+| `AI_TIMEOUT_MS`     | `180000`                       | Maximum time for a single AI request, including retries                  |
 
-> **Billing note:** if `ANTHROPIC_API_KEY` is set in your environment, Claude Code uses it
-> instead of your subscription, and requests are billed to that API key.
+### Choosing a provider
 
-Claude usage counts against your plan's usage limits. Roughly, creating a topic, generating a
-quiz or writing a lesson is one request each, and each short-answer question is one more.
+- **`claude-code` (default):** uses the Claude Code login on this machine, so requests count
+  against your Claude plan's usage limits. Any `ANTHROPIC_API_KEY` in your shell or `.env.local`
+  is deliberately **not** passed to Claude Code, so this mode never bills an API key.
+- **`anthropic`:** set `AI_PROVIDER=anthropic` and `ANTHROPIC_API_KEY` in `.env.local`. Requests
+  go straight to the Anthropic API and are billed per token to that key; Claude Code isn't
+  needed. The server log shows token usage for each request.
+- **`openai`, `gemini`:** not available yet; selecting them stops the app at startup.
+
+Roughly, creating a topic, generating a quiz or writing a lesson is one request each, and each
+short-answer question or coding challenge is one more.
 
 ## Commands
 
@@ -85,7 +98,7 @@ Run `make` to list everything.
 | Command              | What it does                                                         |
 | -------------------- | -------------------------------------------------------------------- |
 | `make setup`         | First-time setup: check prerequisites, install, create config and DB |
-| `make doctor`        | Check Node.js version and Claude Code login                          |
+| `make doctor`        | Check Node.js version and Claude Code login (or API key)             |
 | `make dev`           | Start in development mode at http://127.0.0.1:3000                   |
 | `make start`         | Build and run in production mode (faster pages)                      |
 | `make dev PORT=4000` | Use another port (works with `start` too)                            |
@@ -110,7 +123,7 @@ src/
   lib/                 Small shared utilities (errors, formatting)
   server/
     actions/           Server actions: validate input, call services, map errors
-    ai/                LlmClient interface, Claude Agent SDK adapter, prompts, output schemas
+    ai/                LlmClient, provider registry, Agent SDK and Anthropic API clients, prompts, schemas
     db/                Drizzle schema and SQLite connection
     repositories/      Data access, one class per aggregate
     services/          Use cases (topics, quizzes, readings, progress)
