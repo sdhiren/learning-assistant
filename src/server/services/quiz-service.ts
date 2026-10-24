@@ -20,10 +20,16 @@ import type { LlmClient } from "@/server/ai/llm-client";
 import {
   buildQuizPrompt,
   buildCodeReviewPrompt,
+  buildOutputGradingPrompt,
   buildShortAnswerGradingPrompt,
   type QuizPromptConcept,
 } from "@/server/ai/prompts";
-import { codeReviewSchema, generatedQuizSchema, shortAnswerGradeSchema } from "@/server/ai/schemas";
+import {
+  codeReviewSchema,
+  generatedQuizSchema,
+  outputJudgementSchema,
+  shortAnswerGradeSchema,
+} from "@/server/ai/schemas";
 import { isUniqueConstraintError } from "@/server/db/errors";
 import type { AttemptRow, ConceptRow, QuestionRow, QuizRow, TopicRow } from "@/server/db/schema";
 import type { QuizRepository } from "@/server/repositories/quiz-repository";
@@ -39,6 +45,8 @@ import type {
   SubmitAnswerResultView,
 } from "./view-models";
 
+/** Only an output that matches (or nearly matches) earns more than this. */
+const MAX_JUDGED_OUTPUT_SCORE = 0.9;
 const RECENT_PROMPTS_TO_AVOID = 30;
 /** Accept a quiz if at least this share of the generated questions are valid. */
 const MIN_VALID_QUESTION_RATIO = 0.6;
@@ -276,12 +284,45 @@ export class QuizService {
         return gradeMultipleChoice(selectedIndex, question.correctOptionIndex ?? -1);
       }
       case "code_output":
-        return gradeCodeOutput(answer, question.expectedAnswer ?? "");
+        return (
+          gradeCodeOutput(answer, question.expectedAnswer ?? "") ??
+          (await this.judgeOutput(question, quiz, answer))
+        );
       case "short_answer":
         return this.gradeShortAnswer(question, quiz, answer);
       case "coding_challenge":
         return this.reviewCode(question, quiz, answer);
     }
+  }
+
+  /**
+   * When no exact or near-exact rule matches a code-output answer, Claude
+   * judges how much of the behaviour the learner predicted. Partial credit
+   * is capped below full marks: only a matching output earns 100%.
+   */
+  private async judgeOutput(
+    question: QuestionRow,
+    quiz: QuizRow,
+    answer: string,
+  ): Promise<GradeResult> {
+    const topic = this.requireTopic(quiz.topicId);
+    const judgement = await this.llm.generateStructured({
+      task: "grade-code-output",
+      ...buildOutputGradingPrompt({
+        topicName: topic.name,
+        difficulty: quiz.difficulty,
+        question: question.prompt,
+        code: question.code ?? "",
+        language: question.codeLanguage ?? "text",
+        expectedOutput: question.expectedAnswer ?? "",
+        learnerOutput: answer,
+      }),
+      schema: outputJudgementSchema,
+      effort: "low",
+    });
+
+    const score = Math.min(clampScore(judgement.score), MAX_JUDGED_OUTPUT_SCORE);
+    return { score, isCorrect: isPassingScore(score), feedback: judgement.feedback.trim() };
   }
 
   /** Claude reviews the solution against the rubric; the code is never executed. */

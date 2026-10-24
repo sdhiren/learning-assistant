@@ -88,6 +88,10 @@ Nothing in progress.
 
 ## Done
 
+- Code-output answers are graded on understanding, not just exact text. A new instant rule gives
+  80% for the right values with different line breaks. Answers no rule matches are judged by
+  Claude (partial credit up to 90%, with an explanation of what differs) instead of scoring 0.
+  [PR #10](https://github.com/sdhiren/learning-assistant/pull/10)
 - **B3.** Coding challenges. A new `coding_challenge` question type, with at most one per quiz,
   only for coding topics at Medium difficulty and above. Starter code is pre-filled in a
   monospace editor (Tab indents to match the starter code; Esc then Tab leaves the editor).

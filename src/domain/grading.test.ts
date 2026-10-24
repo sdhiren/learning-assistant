@@ -56,27 +56,29 @@ describe("gradeCodeOutput", () => {
     });
   });
 
-  it("still requires the punctuation around a misspelt word to match", () => {
-    expect(gradeCodeOutput("recoverd; boom", "recovered: boom")).toMatchObject({
-      isCorrect: false,
+  it("gives credit when only the line breaks differ", () => {
+    // fmt.Print(v, " ") in a loop, then fmt.Println: everything is on one line.
+    expect(gradeCodeOutput("1 2\n0 false", "1 2 0 false")).toMatchObject({
+      score: 0.8,
+      isCorrect: true,
     });
-    expect(gradeCodeOutput("map[a:1]", "map[a:2]")).toMatchObject({ isCorrect: false });
+    expect(gradeCodeOutput("a b", "a\nb")?.feedback).toContain("line breaks differ");
   });
 
-  it("never forgives a different value", () => {
-    expect(gradeCodeOutput("closure 2\nclosure 0", "closure 1\nclosure 0")).toMatchObject({
-      score: 0,
-      isCorrect: false,
-    });
-    expect(gradeCodeOutput("ok true", "ok false")).toMatchObject({ isCorrect: false });
-    expect(gradeCodeOutput("nul", "nil")).toMatchObject({ isCorrect: false });
-    expect(gradeCodeOutput("result 12\narg 0", "arg 0\nresult 12")).toMatchObject({
-      isCorrect: false,
-    });
+  // Rules never forgive a different value or order: these fall through to
+  // Claude (null), which judges how much of the behaviour was understood.
+  it("leaves misspelt words with different punctuation to Claude", () => {
+    expect(gradeCodeOutput("recoverd; boom", "recovered: boom")).toBeNull();
+    expect(gradeCodeOutput("map[a:1]", "map[a:2]")).toBeNull();
   });
 
-  it("rejects different output", () => {
-    expect(gradeCodeOutput("3", "2")).toMatchObject({ score: 0, isCorrect: false });
+  it("leaves different values or order to Claude", () => {
+    expect(gradeCodeOutput("closure 2\nclosure 0", "closure 1\nclosure 0")).toBeNull();
+    expect(gradeCodeOutput("ok true", "ok false")).toBeNull();
+    expect(gradeCodeOutput("nul", "nil")).toBeNull();
+    expect(gradeCodeOutput("result 12\narg 0", "arg 0\nresult 12")).toBeNull();
+    expect(gradeCodeOutput("3", "2")).toBeNull();
+    expect(gradeCodeOutput("2 1", "1\n2")).toBeNull();
   });
 });
 

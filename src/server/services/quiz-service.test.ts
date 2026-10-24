@@ -160,11 +160,54 @@ describe("QuizService", () => {
       await expect(answer(first!.id, raw)).rejects.toBeInstanceOf(ValidationError);
     });
 
-    it("grades code output by comparing against the expected output", async () => {
+    it("grades a matching code output instantly, without Claude", async () => {
       const quizId = await startQuiz(conceptIds.slice(0, 3).map((id) => codeOutputQuestion(id)));
-      const [first, second] = app.quizzes.getQuizSession(quizId).questions;
-      expect((await answer(first!.id, "2\n")).result.isCorrect).toBe(true);
-      expect((await answer(second!.id, "11")).result.isCorrect).toBe(false);
+      const [first] = app.quizzes.getQuizSession(quizId).questions;
+      expect((await answer(first!.id, "2\n")).result).toMatchObject({ score: 1, isCorrect: true });
+      expect(app.llm.requestsFor("grade-code-output")).toHaveLength(0);
+    });
+
+    it("gives credit for right values with different line breaks, without Claude", async () => {
+      // The reported case: Print in a loop, then Println, all on one line.
+      const quizId = await startQuiz(
+        conceptIds
+          .slice(0, 3)
+          .map((id) => ({ ...codeOutputQuestion(id), expectedAnswer: "1 2 0 false" })),
+      );
+      const [first] = app.quizzes.getQuizSession(quizId).questions;
+
+      const { result } = await answer(first!.id, "1 2\n0 false");
+
+      expect(result).toMatchObject({ score: 0.8, isCorrect: true });
+      expect(result.feedback).toContain("line breaks differ");
+      expect(app.llm.requestsFor("grade-code-output")).toHaveLength(0);
+    });
+
+    it("asks Claude to judge a non-matching output, capping the score below full marks", async () => {
+      app.llm.respondTo("grade-code-output", {
+        score: 1,
+        feedback: "You understood the addition, but the program prints `2`.",
+      });
+      const quizId = await startQuiz(conceptIds.slice(0, 3).map((id) => codeOutputQuestion(id)));
+      const [, second] = app.quizzes.getQuizSession(quizId).questions;
+
+      const { result } = await answer(second!.id, "11");
+
+      expect(result).toMatchObject({ score: 0.9, isCorrect: true });
+      expect(result.feedback).toContain("prints `2`");
+      const request = app.llm.requestsFor("grade-code-output")[0]!;
+      expect(request.prompt).toContain("<learner_output>\n11\n</learner_output>");
+      expect(request.prompt).toContain("<expected_output>\n2\n</expected_output>");
+    });
+
+    it("marks a mostly-wrong output incorrect when Claude scores it low", async () => {
+      app.llm.respondTo("grade-code-output", { score: 0.1, feedback: "That's a different value." });
+      const quizId = await startQuiz(conceptIds.slice(0, 3).map((id) => codeOutputQuestion(id)));
+      const [, second] = app.quizzes.getQuizSession(quizId).questions;
+      expect((await answer(second!.id, "11")).result).toMatchObject({
+        score: 0.1,
+        isCorrect: false,
+      });
     });
 
     it("grades short answers with Claude and passes the answer as tagged data", async () => {

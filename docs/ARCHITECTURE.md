@@ -98,7 +98,9 @@ precede it in the curriculum (as prerequisites) and its other subtopic siblings 
 concepts), and asks for a plain-language lesson with a fixed section structure and at least
 three worked examples.
 
-**Answer:** multiple-choice and code-output questions are graded locally and deterministically.
+**Answer:** multiple-choice questions are graded locally. Code-output answers first go through
+instant rules (exact, formatting-only, line-layout-only and small-typo matches); anything they
+don't match is judged by Claude for partial understanding, capped at 90%.
 Short answers are graded by Claude against the stored rubric. The attempt and, when it was the
 last question, the quiz completion are written in one transaction.
 
