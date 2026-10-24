@@ -50,7 +50,7 @@ and Gemini PRs add a client file, confirm the default model, flip `implemented`,
 - `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`: required only for the matching provider.
 - `CLAUDE_MODEL`: deprecated alias for `AI_MODEL`, honoured for `claude-code` and `anthropic` when
   `AI_MODEL` is unset. Logs one deprecation warning.
-- `env.ts` validates at startup: a provider that needs a key fails with "AI_PROVIDER=anthropic
+- `env.ts` validates at startup (called from `src/instrumentation.ts`): a provider that needs a key fails with "AI_PROVIDER=anthropic
   needs ANTHROPIC_API_KEY (set it in .env.local)"; an unimplemented provider fails with
   "AI_PROVIDER=openai is not available yet". Validation errors print messages, never values.
 - `createLlmClient(config)` in `container.ts` switches on the provider (exhaustive). The UI gets
