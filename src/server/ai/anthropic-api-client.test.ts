@@ -70,7 +70,7 @@ describe("AnthropicApiClient", () => {
       answer: "hi",
     });
 
-    const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    const body = JSON.parse(String(fetchMock.mock.calls[0]![1]?.body));
     expect(body).toMatchObject({
       model: "claude-opus-5-5",
       stream: true,

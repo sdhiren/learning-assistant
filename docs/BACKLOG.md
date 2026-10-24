@@ -25,18 +25,21 @@ lessons or settings.
 - **Open question:** is separating data enough, or should a profile be PIN-locked so someone else
   using the same Mac can't switch into it?
 
-### B14. Claude authentication with an API key — `todo` · M
+### B14. Multiple AI providers (Anthropic API key first) — `in progress` · M
 
-Let the app use an Anthropic API key as well as the Claude subscription (Claude Code login).
+Let the app use an Anthropic API key as well as the Claude subscription (Claude Code login), with
+a provider registry so OpenAI and Gemini can follow as small PRs.
 
-- **Design:** [docs/design/api-key-auth.md](design/api-key-auth.md). Recommended approach: a
-  second `LlmClient`, `AnthropicApiClient`, on the official Anthropic SDK. Ship with an env var
-  first, then a settings page that stores the key in the macOS Keychain (never in the database
-  or the browser).
-- Also fixes a trap: in subscription mode, a stray `ANTHROPIC_API_KEY` in the shell silently
-  bills the API key today.
-- **Open questions:** one key for the app or a key per profile (recommended, needs B13)? Is the
-  env var enough, or do you want the settings page too? Which model or models with an API key?
+- **Design:** [docs/design/ai-providers.md](design/ai-providers.md).
+- **Stage 1 (in progress, LA-1):** provider registry (`claude-code`, `anthropic`, `openai`,
+  `gemini`), `AI_PROVIDER` / `AI_MODEL` env vars (`CLAUDE_MODEL` kept as a deprecated alias),
+  `AnthropicApiClient`, shared friendly error mapping with key redaction, provider-neutral UI
+  copy. Also fixes the trap where a stray `ANTHROPIC_API_KEY` silently billed the API key in
+  subscription mode.
+- **Next:** OpenAI and Gemini clients (one PR each), then the settings page that stores keys in
+  the macOS Keychain (never in the database or the browser).
+- **Open questions:** one key for the app or a key per profile (recommended, needs B13)? Which
+  cheaper model, if any, to offer with an API key? (Storage is resolved: env var first.)
 
 ## Proposed
 

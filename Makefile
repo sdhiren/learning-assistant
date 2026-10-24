@@ -22,16 +22,27 @@ help: ## Show this help
 
 # --- Setup -------------------------------------------------------------------
 
-doctor: ## Check prerequisites (Node.js version, Claude Code login)
+doctor: ## Check prerequisites (Node.js version, AI provider login or API key)
 	@node -e 'const [a,b]=process.versions.node.split(".").map(Number),[x,y]="$(MIN_NODE)".split(".").map(Number); \
 		if (a<x||(a===x&&b<y)) { console.error("✗ Node.js $(MIN_NODE)+ required (found "+process.versions.node+")"); process.exit(1) } \
 		console.log("✓ Node.js "+process.versions.node)'
-	@command -v claude >/dev/null 2>&1 || { echo "✗ Claude Code not found. Install it: https://claude.com/claude-code"; exit 1; }
-	@claude auth status 2>/dev/null | grep -q '"loggedIn": true' \
-		&& echo "✓ Claude Code is logged in" \
-		|| { echo "✗ Claude Code is not logged in. Run 'claude' once and log in."; exit 1; }
-	@if [ -n "$$ANTHROPIC_API_KEY" ]; then \
-		echo "! ANTHROPIC_API_KEY is set: requests will be billed to that key, not your Claude plan."; fi
+	@# Settings come from the shell first, then .env.local (as Next.js loads them).
+	@setting() { v=$$(printenv "$$1"); [ -n "$$v" ] || v=$$(grep -s "^$$1=" .env.local | tail -1 | cut -d= -f2-); echo "$$v"; }; \
+	provider=$$(setting AI_PROVIDER); provider=$${provider:-claude-code}; \
+	echo "✓ AI provider: $$provider"; \
+	case "$$provider" in \
+	anthropic) \
+		[ -n "$$(setting ANTHROPIC_API_KEY)" ] && echo "✓ ANTHROPIC_API_KEY is set" \
+			|| { echo "✗ AI_PROVIDER=anthropic needs ANTHROPIC_API_KEY (set it in .env.local)"; exit 1; } ;; \
+	claude-code) \
+		command -v claude >/dev/null 2>&1 || { echo "✗ Claude Code not found. Install it: https://claude.com/claude-code"; exit 1; }; \
+		claude auth status 2>/dev/null | grep -q '"loggedIn": true' \
+			&& echo "✓ Claude Code is logged in" \
+			|| { echo "✗ Claude Code is not logged in. Run 'claude' once and log in."; exit 1; }; \
+		if [ -n "$$(setting ANTHROPIC_API_KEY)" ]; then \
+			echo "! ANTHROPIC_API_KEY is set but ignored in claude-code mode (set AI_PROVIDER=anthropic to use it)."; fi ;; \
+	*) echo "✗ AI_PROVIDER=$$provider is not available yet. Use claude-code or anthropic."; exit 1 ;; \
+	esac
 
 setup: doctor install env db-migrate ## First-time setup: check, install, create config and database
 	@echo

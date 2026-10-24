@@ -10,8 +10,8 @@ Phase 1 goals:
 - Estimate mastery per concept and use it to choose what to practise next.
 - Generate focused lessons per concept.
 
-Constraints: runs only on the user's machine, uses the user's Claude subscription (no API
-key), and has no login.
+Constraints: runs only on the user's machine, uses the user's Claude subscription by default
+(an Anthropic API key is optional, chosen with `AI_PROVIDER`), and has no login.
 
 ## High-level design
 
@@ -31,8 +31,15 @@ Browser ──► proxy.ts (Host must be loopback)
                 server/repositories     server/ai/LlmClient
                         │                       │
                         ▼                       ▼
-                 SQLite (Drizzle)      ClaudeAgentClient ──► Claude Code login
-                                                              (Claude subscription)
+                 SQLite (Drizzle)      createLlmClient(AI_PROVIDER)
+                                        │                   │
+                                        ▼                   ▼
+                              ClaudeAgentClient      AnthropicApiClient
+                              (claude-code, default) (anthropic)
+                                        │                   │
+                                        ▼                   ▼
+                              Claude Code login      Anthropic API
+                              (Claude subscription)  (ANTHROPIC_API_KEY)
                          domain/  pure functions used by services and UI
 ```
 
@@ -42,14 +49,14 @@ Services depend on the `LlmClient` interface and on repositories, never on Next.
 
 ## Key decisions
 
-| Decision       | Choice                                                                                      | Why                                                                      | Trade-off                                                                                                       |
-| -------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| Model access   | Claude Agent SDK using the local Claude Code login                                          | Uses the user's subscription; no API key to manage                       | Personal, local use only; shares the plan's usage limits; each call starts a subprocess (about 1 s of overhead) |
-| Model boundary | `LlmClient` interface with one `generateStructured` method                                  | Provider can be swapped (for example to an API key) and tests use a fake | One more layer of indirection                                                                                   |
-| Output format  | JSON-schema structured output, validated again with zod                                     | Model output is never trusted as-is                                      | Schemas are kept flat and permissive; stricter per-type checks happen in `question-validation.ts`               |
-| Storage        | SQLite via better-sqlite3 and Drizzle, with migrations applied at startup                   | Zero setup, a single file, transactional                                 | Single writer; fine for one user                                                                                |
-| Mutations      | Server Actions                                                                              | Built-in CSRF origin check, typed end to end, no hand-written API        | Dispatched one at a time per client (fine for this UI)                                                          |
-| Mastery        | Recency- and difficulty-weighted average per concept; "strong" requires at least 3 attempts | Simple, explainable, testable                                            | Not a full knowledge-tracing model (planned for Phase 2)                                                        |
+| Decision       | Choice                                                                                                                                    | Why                                                                                           | Trade-off                                                                                               |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Model access   | Provider registry (`server/ai/providers.ts`): Claude Agent SDK on the local Claude Code login by default, or the Anthropic API with a key | Subscription needs no key to manage; the API path is faster, has typed errors and token usage | Subscription: local use only, shares the plan's limits, ~1 s subprocess per call. API: billed per token |
+| Model boundary | `LlmClient` interface with one `generateStructured` method                                                                                | Provider can be swapped (for example to an API key) and tests use a fake                      | One more layer of indirection                                                                           |
+| Output format  | JSON-schema structured output, validated again with zod                                                                                   | Model output is never trusted as-is                                                           | Schemas are kept flat and permissive; stricter per-type checks happen in `question-validation.ts`       |
+| Storage        | SQLite via better-sqlite3 and Drizzle, with migrations applied at startup                                                                 | Zero setup, a single file, transactional                                                      | Single writer; fine for one user                                                                        |
+| Mutations      | Server Actions                                                                                                                            | Built-in CSRF origin check, typed end to end, no hand-written API                             | Dispatched one at a time per client (fine for this UI)                                                  |
+| Mastery        | Recency- and difficulty-weighted average per concept; "strong" requires at least 3 attempts                                               | Simple, explainable, testable                                                                 | Not a full knowledge-tracing model (planned for Phase 2)                                                |
 
 ## Data model
 
@@ -120,7 +127,11 @@ controls that make that safe:
 - **Locked-down agent:** the Claude Agent SDK runs with no tools (`tools: []`), no MCP servers,
   no filesystem settings or CLAUDE.md files, no persisted sessions, `dontAsk` permissions, a
   maximum of 3 turns, a timeout, and an empty temporary working directory. Prompt-injected
-  text has nothing it can act on.
+  text has nothing it can act on. `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` are stripped
+  from its environment, so subscription mode never bills an API key.
+- **API keys:** read only in `server-only` modules, never logged, never put in error messages or
+  causes, and never passed to client components (the UI gets only the provider label and usage
+  note). See [docs/design/ai-providers.md](design/ai-providers.md).
 - **Prompt injection:** user text is wrapped in tags (with early tag closes neutralized), and
   the system prompt tells the model to treat tagged content as data. All output is
   schema-validated, and answer keys are never influenced by learner input.
@@ -162,5 +173,6 @@ Run everything with `npm run check`.
   Streaming progress would improve the experience.
 - Answer keys are checked structurally but not independently re-solved. A verification pass
   (or running code-output snippets) is planned.
-- To support an API key as well, add an `AnthropicApiClient` implementing `LlmClient` and
-  choose between them in `container.ts`.
+- OpenAI and Gemini are in the provider registry but not implemented. Each needs an `LlmClient`
+  in `server/ai/`, a case in `createLlmClient`, and its `implemented` flag flipped. API keys
+  live in `.env.local` until the Keychain-backed settings page (B14 stage 2).
