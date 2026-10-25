@@ -4,7 +4,7 @@ import { NextUp } from "@/components/dashboard/next-up";
 import { PracticeStats } from "@/components/dashboard/practice-stats";
 import { CreateTopicForm } from "@/components/topics/create-topic-form";
 import { TopicCard } from "@/components/topics/topic-card";
-import { getServices } from "@/server/container";
+import { getAiProviderInfo, getServices } from "@/server/container";
 
 export default async function HomePage() {
   await connection();
@@ -12,6 +12,7 @@ export default async function HomePage() {
   const topics = services.topics.listTopics();
   const dashboard = services.dashboard.getDashboard();
   const hasTopics = topics.length > 0;
+  const ai = getAiProviderInfo();
 
   return (
     <div className="space-y-10">
@@ -19,7 +20,7 @@ export default async function HomePage() {
         <div className="space-y-3">
           <p className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent-soft px-3 py-1 text-xs font-medium text-accent">
             <span aria-hidden="true" className="size-1.5 animate-pulse rounded-full bg-accent" />
-            Interview prep, powered by Claude
+            Interview prep, powered by {ai.label}
           </p>
           <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
             {hasTopics ? (
@@ -33,8 +34,8 @@ export default async function HomePage() {
             )}
           </h1>
           <p className="max-w-2xl text-lg text-muted">
-            Pick any technical topic. Claude builds a skill map for it, quizzes you at the level you
-            choose, and keeps track of what you still need to practise.
+            Pick any technical topic. {ai.label} builds a skill map for it, quizzes you at the level
+            you choose, and keeps track of what you still need to practise.
           </p>
         </div>
         {hasTopics && <PracticeStats dashboard={dashboard} />}

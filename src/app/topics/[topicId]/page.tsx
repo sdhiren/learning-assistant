@@ -15,7 +15,7 @@ import { MasteryBadge } from "@/components/ui/mastery-badge";
 import { ProgressRing } from "@/components/ui/progress-ring";
 import { formatPercent } from "@/lib/format";
 import { deleteTopicAction } from "@/server/actions/topic-actions";
-import { getServices } from "@/server/container";
+import { getAiProviderInfo, getServices } from "@/server/container";
 import { orNotFound } from "@/server/or-not-found";
 
 /** Loads the overview once per request; shared by the metadata and the page. */
@@ -116,8 +116,8 @@ export default async function TopicPage(props: PageProps<"/topics/[topicId]">) {
       <Card aria-labelledby="add-subtopic-heading">
         <CardTitle id="add-subtopic-heading">Add a subtopic</CardTitle>
         <p className="mt-1 mb-5 text-sm text-muted">
-          Missing something you want to practise? Name it and Claude will break it into concepts and
-          add it to your skill map.
+          Missing something you want to practise? Name it and {getAiProviderInfo().label} will break
+          it into concepts and add it to your skill map.
         </p>
         <AddSubtopicForm topicId={topic.id} />
       </Card>

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 
+import { useAiProvider } from "@/components/ai-provider-context";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { GenerationProgress } from "@/components/ui/generation-progress";
@@ -24,6 +25,7 @@ export function GenerateReadingButton({
   const [instructions, setInstructions] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const { label } = useAiProvider();
 
   function handleClick() {
     setError(null);
@@ -52,7 +54,7 @@ export function GenerateReadingButton({
         {pending ? "Writing lesson…" : hasReading ? "Rewrite lesson" : "Write the lesson"}
       </Button>
       {pending && (
-        <GenerationProgress message="Claude is writing your lesson" expected="about a minute" />
+        <GenerationProgress message={`${label} is writing your lesson`} expected="about a minute" />
       )}
       {error && <Alert>{error}</Alert>}
     </div>

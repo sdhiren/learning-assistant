@@ -18,7 +18,7 @@ const TIPS = [
 const TIP_INTERVAL_MS = 7000;
 
 interface GenerationProgressProps {
-  /** What Claude is doing, e.g. "Claude is writing your quiz". */
+  /** What the model is doing, built from the provider label, e.g. "Claude is writing your quiz". */
   message: string;
   /** Typical duration, e.g. "20 to 60 seconds". */
   expected: string;

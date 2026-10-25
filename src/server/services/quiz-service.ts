@@ -95,7 +95,7 @@ export class QuizService {
 
     if (drafts.length < Math.ceil(input.questionCount * MIN_VALID_QUESTION_RATIO)) {
       throw new AiGenerationError(
-        "Claude produced too few usable questions for this quiz. Please try again.",
+        `${this.llm.providerLabel} produced too few usable questions for this quiz. Please try again.`,
       );
     }
 

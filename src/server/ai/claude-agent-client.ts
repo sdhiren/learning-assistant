@@ -25,7 +25,8 @@ const UNAVAILABLE_MESSAGE =
 
 /**
  * Calls Claude through the Claude Agent SDK, which authenticates with the
- * Claude Code login on this machine (the user's Claude subscription).
+ * Claude Code login on this machine (the user's Claude subscription). API
+ * credentials are stripped from the subprocess env (see `buildAgentEnv`).
  *
  * The agent is locked down to pure text generation: no built-in tools, no MCP
  * servers, no filesystem settings or CLAUDE.md files, no persisted sessions,
@@ -33,6 +34,7 @@ const UNAVAILABLE_MESSAGE =
  * nothing to act on beyond producing (validated) output.
  */
 export class ClaudeAgentClient implements LlmClient {
+  readonly providerLabel = "Claude";
   private sandboxDir: string | undefined;
 
   constructor(private readonly options: ClaudeAgentClientOptions) {}
@@ -82,7 +84,7 @@ export class ClaudeAgentClient implements LlmClient {
         maxTurns: 3,
         cwd: this.getSandboxDir(),
         abortController,
-        env: { ...process.env, CLAUDE_AGENT_SDK_CLIENT_APP: CLIENT_APP_ID },
+        env: buildAgentEnv(),
       },
     });
 
@@ -119,6 +121,23 @@ export class ClaudeAgentClient implements LlmClient {
     this.sandboxDir ??= mkdtempSync(path.join(tmpdir(), "learning-assistant-agent-"));
     return this.sandboxDir;
   }
+}
+
+/**
+ * The environment for the Claude Code subprocess. API credentials are removed
+ * so a stray ANTHROPIC_API_KEY in the shell can't silently switch the
+ * subscription path to API billing.
+ */
+export function buildAgentEnv(
+  source: Record<string, string | undefined> = process.env,
+): Record<string, string | undefined> {
+  const env: Record<string, string | undefined> = {
+    ...source,
+    CLAUDE_AGENT_SDK_CLIENT_APP: CLIENT_APP_ID,
+  };
+  delete env.ANTHROPIC_API_KEY;
+  delete env.ANTHROPIC_AUTH_TOKEN;
+  return env;
 }
 
 function toJsonSchema(schema: z.ZodType): Record<string, unknown> {
