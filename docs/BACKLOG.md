@@ -82,6 +82,13 @@ it. Cheap insurance before risky migrations.
 
 Full-text search across generated lessons and key takeaways (SQLite FTS5).
 
+### B15. Re-grade past code-output answers — `todo` · S
+
+Answers graded before [PR #10](https://github.com/sdhiren/learning-assistant/pull/10) keep their
+old scores. A one-off re-grade could re-score answers that only differ in line breaks instantly,
+with no Claude usage, and optionally send the other 0% answers to Claude (one call each). Deferred
+for now.
+
 ## In progress
 
 Nothing in progress.
