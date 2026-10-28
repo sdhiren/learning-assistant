@@ -33,7 +33,7 @@ const envSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["AI_PROVIDER"],
-        message: `AI_PROVIDER=${env.AI_PROVIDER} is not available yet. Use claude-code or anthropic.`,
+        message: `AI_PROVIDER=${env.AI_PROVIDER} is not available yet. Use ${implementedProviders()}.`,
       });
       return;
     }
@@ -45,6 +45,12 @@ const envSchema = z
       });
     }
   });
+
+/** e.g. "claude-code, anthropic or openai". */
+function implementedProviders(): string {
+  const ids = PROVIDER_IDS.filter((id) => PROVIDERS[id].implemented);
+  return ids.length > 1 ? `${ids.slice(0, -1).join(", ")} or ${ids.at(-1)}` : (ids[0] ?? "");
+}
 
 type KeyEnvVar = "ANTHROPIC_API_KEY" | "OPENAI_API_KEY" | "GEMINI_API_KEY";
 
