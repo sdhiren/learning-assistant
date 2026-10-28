@@ -28,7 +28,7 @@ lessons or settings.
 ### B14. Multiple AI providers (Anthropic API key first) — `in progress` · M
 
 Let the app use an Anthropic API key as well as the Claude subscription (Claude Code login), with
-a provider registry so OpenAI and Gemini can follow as small PRs.
+a provider registry so OpenAI and Gemini can follow (now done: LA-2).
 
 - **Design:** [docs/design/ai-providers.md](design/ai-providers.md).
 - **Stage 1 (in progress, LA-1):** provider registry (`claude-code`, `anthropic`, `openai`,
@@ -36,8 +36,11 @@ a provider registry so OpenAI and Gemini can follow as small PRs.
   `AnthropicApiClient`, shared friendly error mapping with key redaction, provider-neutral UI
   copy. Also fixes the trap where a stray `ANTHROPIC_API_KEY` silently billed the API key in
   subscription mode.
-- **Next:** OpenAI and Gemini clients (one PR each), then the settings page that stores keys in
-  the macOS Keychain (never in the database or the browser).
+- **Stage 1b (LA-2):** `OpenAiClient` (Responses API, `gpt-5`) and `GeminiClient`
+  (`@google/genai`, `gemini-2.5-pro`), a per-provider JSON schema adapter, a shared contract test
+  suite and `make smoke-provider`. All four providers are available.
+- **Next:** the settings page that stores keys in the macOS Keychain (never in the database or
+  the browser).
 - **Open questions:** one key for the app or a key per profile (recommended, needs B13)? Which
   cheaper model, if any, to offer with an API key? (Storage is resolved: env var first.)
 

@@ -6,8 +6,8 @@ writes focused lessons, and tracks which concepts you still need to practise.
 
 Everything runs on your own machine. Your progress is stored in a local SQLite file. By default
 Claude is reached through the Claude Code login on this computer, so it uses your Claude
-subscription rather than a separate API bill; you can switch to an Anthropic API key instead
-(see [Choosing a provider](#choosing-a-provider)).
+subscription rather than a separate API bill; you can switch to an Anthropic, OpenAI or Gemini API
+key instead (see [Choosing a provider](#choosing-a-provider)).
 
 ## Features (Phase 1)
 
@@ -67,16 +67,16 @@ automatically by `make dev` and `make start`.
 
 All settings are optional. Copy `.env.example` to `.env.local` to change them.
 
-| Variable            | Default                        | Purpose                                                                  |
-| ------------------- | ------------------------------ | ------------------------------------------------------------------------ |
-| `DATABASE_PATH`     | `./data/learning-assistant.db` | Where your progress is stored                                            |
-| `AI_PROVIDER`       | `claude-code`                  | `claude-code` (your Claude subscription) or `anthropic` (API key)        |
-| `AI_MODEL`          | provider default               | Model used for generation and grading (`claude-opus-5-5` for both today) |
-| `ANTHROPIC_API_KEY` | none                           | Required when `AI_PROVIDER=anthropic`; ignored in `claude-code` mode     |
-| `OPENAI_API_KEY`    | none                           | Reserved for the upcoming `openai` provider                              |
-| `GEMINI_API_KEY`    | none                           | Reserved for the upcoming `gemini` provider                              |
-| `CLAUDE_MODEL`      | none                           | Deprecated alias for `AI_MODEL` (Claude providers only)                  |
-| `AI_TIMEOUT_MS`     | `180000`                       | Maximum time for a single AI request, including retries                  |
+| Variable            | Default                        | Purpose                                                                     |
+| ------------------- | ------------------------------ | --------------------------------------------------------------------------- |
+| `DATABASE_PATH`     | `./data/learning-assistant.db` | Where your progress is stored                                               |
+| `AI_PROVIDER`       | `claude-code`                  | `claude-code` (your Claude subscription), `anthropic`, `openai` or `gemini` |
+| `AI_MODEL`          | provider default               | Model used for generation and grading (see below)                           |
+| `ANTHROPIC_API_KEY` | none                           | Required when `AI_PROVIDER=anthropic`; ignored in `claude-code` mode        |
+| `OPENAI_API_KEY`    | none                           | Required when `AI_PROVIDER=openai`                                          |
+| `GEMINI_API_KEY`    | none                           | Required when `AI_PROVIDER=gemini`                                          |
+| `CLAUDE_MODEL`      | none                           | Deprecated alias for `AI_MODEL` (Claude providers only)                     |
+| `AI_TIMEOUT_MS`     | `180000`                       | Maximum time for a single AI request, including retries                     |
 
 ### Choosing a provider
 
@@ -86,7 +86,16 @@ All settings are optional. Copy `.env.example` to `.env.local` to change them.
 - **`anthropic`:** set `AI_PROVIDER=anthropic` and `ANTHROPIC_API_KEY` in `.env.local`. Requests
   go straight to the Anthropic API and are billed per token to that key; Claude Code isn't
   needed. The server log shows token usage for each request.
-- **`openai`, `gemini`:** not available yet; selecting them stops the app at startup.
+- **`openai`:** set `AI_PROVIDER=openai` and `OPENAI_API_KEY`. Uses `gpt-5` through the Responses
+  API, billed per token. An `AI_MODEL` override must be a reasoning model (gpt-5 family or
+  o-series); other models reject the reasoning effort the app sends.
+- **`gemini`:** set `AI_PROVIDER=gemini` and `GEMINI_API_KEY` (create a key in Google AI
+  Studio). Uses `gemini-2.5-pro`.
+
+Default models: `claude-opus-5-5` for `claude-code` and `anthropic`, `gpt-5` for `openai`,
+`gemini-2.5-pro` for `gemini`. The prompts were written for Claude; after changing provider or
+model, `make smoke-provider PROVIDER=<id> TASKS=all` runs every kind of request once against your
+key and prints pass or fail for each (never prompts or keys).
 
 Roughly, creating a topic, generating a quiz or writing a lesson is one request each, and each
 short-answer question or coding challenge is one more.
@@ -95,21 +104,22 @@ short-answer question or coding challenge is one more.
 
 Run `make` to list everything.
 
-| Command              | What it does                                                         |
-| -------------------- | -------------------------------------------------------------------- |
-| `make setup`         | First-time setup: check prerequisites, install, create config and DB |
-| `make doctor`        | Check Node.js version and Claude Code login (or API key)             |
-| `make dev`           | Start in development mode at http://127.0.0.1:3000                   |
-| `make start`         | Build and run in production mode (faster pages)                      |
-| `make dev PORT=4000` | Use another port (works with `start` too)                            |
-| `make test`          | Run the unit and integration tests                                   |
-| `make check`         | Lint, typecheck, format check and tests; run before committing       |
-| `make db-migrate`    | Create the database or apply pending migrations                      |
-| `make db-shell`      | Open a SQL shell on your data (`.tables`, `.quit`)                   |
-| `make db-backup`     | Save a timestamped copy to `data/backups/`                           |
-| `make db-reset`      | Delete all progress and start fresh (asks for confirmation)          |
-| `make db-generate`   | Generate a migration after editing `src/server/db/schema.ts`         |
-| `make clean`         | Remove build output and caches (keeps your data)                     |
+| Command               | What it does                                                         |
+| --------------------- | -------------------------------------------------------------------- |
+| `make setup`          | First-time setup: check prerequisites, install, create config and DB |
+| `make doctor`         | Check Node.js version and Claude Code login (or API key)             |
+| `make dev`            | Start in development mode at http://127.0.0.1:3000                   |
+| `make start`          | Build and run in production mode (faster pages)                      |
+| `make dev PORT=4000`  | Use another port (works with `start` too)                            |
+| `make test`           | Run the unit and integration tests                                   |
+| `make check`          | Lint, typecheck, format check and tests; run before committing       |
+| `make smoke-provider` | Real AI calls via `PROVIDER=<id>` (`TASKS=all`: every request type)  |
+| `make db-migrate`     | Create the database or apply pending migrations                      |
+| `make db-shell`       | Open a SQL shell on your data (`.tables`, `.quit`)                   |
+| `make db-backup`      | Save a timestamped copy to `data/backups/`                           |
+| `make db-reset`       | Delete all progress and start fresh (asks for confirmation)          |
+| `make db-generate`    | Generate a migration after editing `src/server/db/schema.ts`         |
+| `make clean`          | Remove build output and caches (keeps your data)                     |
 
 The equivalent npm scripts (`npm run dev`, `npm test`, `npm run check`, ...) also work.
 
@@ -123,7 +133,7 @@ src/
   lib/                 Small shared utilities (errors, formatting)
   server/
     actions/           Server actions: validate input, call services, map errors
-    ai/                LlmClient, provider registry, Agent SDK and Anthropic API clients, prompts, schemas
+    ai/                LlmClient, provider registry, one client per provider, schema adapter, prompts, schemas
     db/                Drizzle schema and SQLite connection
     repositories/      Data access, one class per aggregate
     services/          Use cases (topics, quizzes, readings, progress)
