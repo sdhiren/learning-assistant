@@ -1,0 +1,633 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`toProviderJsonSchema > gemini > converts codeReview within the provider's keyword allowlist 1`] = `
+{
+  "additionalProperties": false,
+  "properties": {
+    "complexity": {
+      "description": "Time and space complexity, and whether it's fitting.",
+      "type": "string",
+    },
+    "correctness": {
+      "description": "Does it solve the problem? Point to any bug.",
+      "type": "string",
+    },
+    "edgeCases": {
+      "description": "Which edge cases are handled or missed.",
+      "type": "string",
+    },
+    "score": {
+      "description": "0 to 1. 1 = correct, handles the edge cases and has appropriate complexity.",
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number",
+    },
+    "summary": {
+      "description": "One or two sentences: the overall verdict.",
+      "type": "string",
+    },
+  },
+  "required": [
+    "score",
+    "summary",
+    "correctness",
+    "edgeCases",
+    "complexity",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`toProviderJsonSchema > gemini > converts generatedQuiz within the provider's keyword allowlist 1`] = `
+{
+  "additionalProperties": false,
+  "properties": {
+    "questions": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "description": "code_output: the snippet. coding_challenge: starter code (signature plus a TODO, never the solution). Optional otherwise; null if unused.",
+            "type": [
+              "string",
+              "null",
+            ],
+          },
+          "codeLanguage": {
+            "description": "e.g. 'javascript', 'python'. Null without code.",
+            "type": [
+              "string",
+              "null",
+            ],
+          },
+          "conceptId": {
+            "description": "Must be one of the concept ids provided.",
+            "type": "string",
+          },
+          "correctOptionIndex": {
+            "anyOf": [
+              {
+                "type": "integer",
+              },
+              {
+                "type": "null",
+              },
+            ],
+            "description": "0-based index of the correct option for multiple_choice; null otherwise.",
+          },
+          "expectedAnswer": {
+            "description": "short_answer: a concise model answer. code_output: the exact program output. coding_challenge: a complete, idiomatic reference solution. multiple_choice: null.",
+            "type": [
+              "string",
+              "null",
+            ],
+          },
+          "explanation": {
+            "description": "Why the answer is correct, teaching the concept.",
+            "type": "string",
+          },
+          "options": {
+            "description": "Exactly 4 distinct options for multiple_choice; empty array otherwise.",
+            "items": {
+              "type": "string",
+            },
+            "type": "array",
+          },
+          "prompt": {
+            "description": "The question text, without the code snippet.",
+            "type": "string",
+          },
+          "rubric": {
+            "description": "short_answer: 2-4 key points a strong answer covers. coding_challenge: 3-5 points covering correctness, edge cases and time/space complexity. Empty array otherwise.",
+            "items": {
+              "type": "string",
+            },
+            "type": "array",
+          },
+          "type": {
+            "enum": [
+              "multiple_choice",
+              "short_answer",
+              "code_output",
+              "coding_challenge",
+            ],
+            "type": "string",
+          },
+        },
+        "required": [
+          "conceptId",
+          "type",
+          "prompt",
+          "code",
+          "codeLanguage",
+          "options",
+          "correctOptionIndex",
+          "expectedAnswer",
+          "rubric",
+          "explanation",
+        ],
+        "type": "object",
+      },
+      "type": "array",
+    },
+  },
+  "required": [
+    "questions",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`toProviderJsonSchema > gemini > converts newSubtopic within the provider's keyword allowlist 1`] = `
+{
+  "additionalProperties": false,
+  "properties": {
+    "concepts": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "description": "Short concept name, e.g. 'Event loop phases'.",
+            "type": "string",
+          },
+          "summary": {
+            "description": "One sentence on what the learner must understand.",
+            "type": "string",
+          },
+        },
+        "required": [
+          "name",
+          "summary",
+        ],
+        "type": "object",
+      },
+      "maxItems": 6,
+      "minItems": 2,
+      "type": "array",
+    },
+    "name": {
+      "description": "A concise, clean title for the subtopic (fix casing and typos; keep its meaning).",
+      "type": "string",
+    },
+  },
+  "required": [
+    "name",
+    "concepts",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`toProviderJsonSchema > gemini > converts outputJudgement within the provider's keyword allowlist 1`] = `
+{
+  "additionalProperties": false,
+  "properties": {
+    "feedback": {
+      "description": "Two to four sentences: what was right, what differs, and the reason it differs.",
+      "type": "string",
+    },
+    "score": {
+      "description": "0 to 1, by how much of the program's behaviour the learner predicted correctly.",
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number",
+    },
+  },
+  "required": [
+    "score",
+    "feedback",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`toProviderJsonSchema > gemini > converts reading within the provider's keyword allowlist 1`] = `
+{
+  "additionalProperties": false,
+  "properties": {
+    "keyTakeaways": {
+      "description": "Short, plain-language points worth memorising for interviews.",
+      "items": {
+        "type": "string",
+      },
+      "maxItems": 5,
+      "minItems": 3,
+      "type": "array",
+    },
+    "markdown": {
+      "description": "The lesson in GitHub-flavoured Markdown, following the requested ## sections.",
+      "type": "string",
+    },
+  },
+  "required": [
+    "markdown",
+    "keyTakeaways",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`toProviderJsonSchema > gemini > converts shortAnswerGrade within the provider's keyword allowlist 1`] = `
+{
+  "additionalProperties": false,
+  "properties": {
+    "feedback": {
+      "description": "Two or three sentences of direct, constructive feedback.",
+      "type": "string",
+    },
+    "missedPoints": {
+      "description": "Rubric points the answer missed or got wrong.",
+      "items": {
+        "type": "string",
+      },
+      "type": "array",
+    },
+    "score": {
+      "description": "0 to 1. 1 = covers every rubric point accurately.",
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number",
+    },
+  },
+  "required": [
+    "score",
+    "feedback",
+    "missedPoints",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`toProviderJsonSchema > gemini > converts skillTree within the provider's keyword allowlist 1`] = `
+{
+  "additionalProperties": false,
+  "properties": {
+    "subtopics": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "concepts": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "description": "Short concept name, e.g. 'Event loop phases'.",
+                  "type": "string",
+                },
+                "summary": {
+                  "description": "One sentence on what the learner must understand.",
+                  "type": "string",
+                },
+              },
+              "required": [
+                "name",
+                "summary",
+              ],
+              "type": "object",
+            },
+            "maxItems": 6,
+            "minItems": 2,
+            "type": "array",
+          },
+          "name": {
+            "type": "string",
+          },
+        },
+        "required": [
+          "name",
+          "concepts",
+        ],
+        "type": "object",
+      },
+      "maxItems": 6,
+      "minItems": 3,
+      "type": "array",
+    },
+    "summary": {
+      "description": "Two-sentence overview of the topic for an interview candidate.",
+      "type": "string",
+    },
+  },
+  "required": [
+    "summary",
+    "subtopics",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`toProviderJsonSchema > openai > converts codeReview within the provider's keyword allowlist 1`] = `
+{
+  "additionalProperties": false,
+  "properties": {
+    "complexity": {
+      "description": "Time and space complexity, and whether it's fitting.",
+      "type": "string",
+    },
+    "correctness": {
+      "description": "Does it solve the problem? Point to any bug.",
+      "type": "string",
+    },
+    "edgeCases": {
+      "description": "Which edge cases are handled or missed.",
+      "type": "string",
+    },
+    "score": {
+      "description": "0 to 1. 1 = correct, handles the edge cases and has appropriate complexity.",
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number",
+    },
+    "summary": {
+      "description": "One or two sentences: the overall verdict.",
+      "type": "string",
+    },
+  },
+  "required": [
+    "score",
+    "summary",
+    "correctness",
+    "edgeCases",
+    "complexity",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`toProviderJsonSchema > openai > converts generatedQuiz within the provider's keyword allowlist 1`] = `
+{
+  "additionalProperties": false,
+  "properties": {
+    "questions": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "description": "code_output: the snippet. coding_challenge: starter code (signature plus a TODO, never the solution). Optional otherwise; null if unused.",
+            "type": [
+              "string",
+              "null",
+            ],
+          },
+          "codeLanguage": {
+            "description": "e.g. 'javascript', 'python'. Null without code.",
+            "type": [
+              "string",
+              "null",
+            ],
+          },
+          "conceptId": {
+            "description": "Must be one of the concept ids provided.",
+            "type": "string",
+          },
+          "correctOptionIndex": {
+            "anyOf": [
+              {
+                "type": "integer",
+              },
+              {
+                "type": "null",
+              },
+            ],
+            "description": "0-based index of the correct option for multiple_choice; null otherwise.",
+          },
+          "expectedAnswer": {
+            "description": "short_answer: a concise model answer. code_output: the exact program output. coding_challenge: a complete, idiomatic reference solution. multiple_choice: null.",
+            "type": [
+              "string",
+              "null",
+            ],
+          },
+          "explanation": {
+            "description": "Why the answer is correct, teaching the concept.",
+            "type": "string",
+          },
+          "options": {
+            "description": "Exactly 4 distinct options for multiple_choice; empty array otherwise.",
+            "items": {
+              "type": "string",
+            },
+            "type": "array",
+          },
+          "prompt": {
+            "description": "The question text, without the code snippet.",
+            "type": "string",
+          },
+          "rubric": {
+            "description": "short_answer: 2-4 key points a strong answer covers. coding_challenge: 3-5 points covering correctness, edge cases and time/space complexity. Empty array otherwise.",
+            "items": {
+              "type": "string",
+            },
+            "type": "array",
+          },
+          "type": {
+            "enum": [
+              "multiple_choice",
+              "short_answer",
+              "code_output",
+              "coding_challenge",
+            ],
+            "type": "string",
+          },
+        },
+        "required": [
+          "conceptId",
+          "type",
+          "prompt",
+          "code",
+          "codeLanguage",
+          "options",
+          "correctOptionIndex",
+          "expectedAnswer",
+          "rubric",
+          "explanation",
+        ],
+        "type": "object",
+      },
+      "type": "array",
+    },
+  },
+  "required": [
+    "questions",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`toProviderJsonSchema > openai > converts newSubtopic within the provider's keyword allowlist 1`] = `
+{
+  "additionalProperties": false,
+  "properties": {
+    "concepts": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "description": "Short concept name, e.g. 'Event loop phases'.",
+            "type": "string",
+          },
+          "summary": {
+            "description": "One sentence on what the learner must understand.",
+            "type": "string",
+          },
+        },
+        "required": [
+          "name",
+          "summary",
+        ],
+        "type": "object",
+      },
+      "maxItems": 6,
+      "minItems": 2,
+      "type": "array",
+    },
+    "name": {
+      "description": "A concise, clean title for the subtopic (fix casing and typos; keep its meaning).",
+      "type": "string",
+    },
+  },
+  "required": [
+    "name",
+    "concepts",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`toProviderJsonSchema > openai > converts outputJudgement within the provider's keyword allowlist 1`] = `
+{
+  "additionalProperties": false,
+  "properties": {
+    "feedback": {
+      "description": "Two to four sentences: what was right, what differs, and the reason it differs.",
+      "type": "string",
+    },
+    "score": {
+      "description": "0 to 1, by how much of the program's behaviour the learner predicted correctly.",
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number",
+    },
+  },
+  "required": [
+    "score",
+    "feedback",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`toProviderJsonSchema > openai > converts reading within the provider's keyword allowlist 1`] = `
+{
+  "additionalProperties": false,
+  "properties": {
+    "keyTakeaways": {
+      "description": "Short, plain-language points worth memorising for interviews.",
+      "items": {
+        "type": "string",
+      },
+      "maxItems": 5,
+      "minItems": 3,
+      "type": "array",
+    },
+    "markdown": {
+      "description": "The lesson in GitHub-flavoured Markdown, following the requested ## sections.",
+      "type": "string",
+    },
+  },
+  "required": [
+    "markdown",
+    "keyTakeaways",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`toProviderJsonSchema > openai > converts shortAnswerGrade within the provider's keyword allowlist 1`] = `
+{
+  "additionalProperties": false,
+  "properties": {
+    "feedback": {
+      "description": "Two or three sentences of direct, constructive feedback.",
+      "type": "string",
+    },
+    "missedPoints": {
+      "description": "Rubric points the answer missed or got wrong.",
+      "items": {
+        "type": "string",
+      },
+      "type": "array",
+    },
+    "score": {
+      "description": "0 to 1. 1 = covers every rubric point accurately.",
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number",
+    },
+  },
+  "required": [
+    "score",
+    "feedback",
+    "missedPoints",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`toProviderJsonSchema > openai > converts skillTree within the provider's keyword allowlist 1`] = `
+{
+  "additionalProperties": false,
+  "properties": {
+    "subtopics": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "concepts": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "description": "Short concept name, e.g. 'Event loop phases'.",
+                  "type": "string",
+                },
+                "summary": {
+                  "description": "One sentence on what the learner must understand.",
+                  "type": "string",
+                },
+              },
+              "required": [
+                "name",
+                "summary",
+              ],
+              "type": "object",
+            },
+            "maxItems": 6,
+            "minItems": 2,
+            "type": "array",
+          },
+          "name": {
+            "type": "string",
+          },
+        },
+        "required": [
+          "name",
+          "concepts",
+        ],
+        "type": "object",
+      },
+      "maxItems": 6,
+      "minItems": 3,
+      "type": "array",
+    },
+    "summary": {
+      "description": "Two-sentence overview of the topic for an interview candidate.",
+      "type": "string",
+    },
+  },
+  "required": [
+    "summary",
+    "subtopics",
+  ],
+  "type": "object",
+}
+`;

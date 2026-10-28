@@ -5,12 +5,12 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { query, type SDKResultMessage } from "@anthropic-ai/claude-agent-sdk";
-import { z } from "zod";
 
 import { AiGenerationError } from "@/lib/errors";
 import { logger } from "@/server/logger";
 
 import type { LlmClient, StructuredRequest } from "./llm-client";
+import { toProviderJsonSchema } from "./schema-adapter";
 
 interface ClaudeAgentClientOptions {
   model: string;
@@ -74,7 +74,10 @@ export class ClaudeAgentClient implements LlmClient {
         model: this.options.model,
         systemPrompt: request.systemPrompt,
         effort: request.effort,
-        outputFormat: { type: "json_schema", schema: toJsonSchema(request.schema) },
+        outputFormat: {
+          type: "json_schema",
+          schema: toProviderJsonSchema(request.schema, "claude-code"),
+        },
         tools: [],
         mcpServers: {},
         strictMcpConfig: true,
@@ -138,10 +141,4 @@ export function buildAgentEnv(
   delete env.ANTHROPIC_API_KEY;
   delete env.ANTHROPIC_AUTH_TOKEN;
   return env;
-}
-
-function toJsonSchema(schema: z.ZodType): Record<string, unknown> {
-  const jsonSchema: Record<string, unknown> = z.toJSONSchema(schema, { io: "output" });
-  delete jsonSchema.$schema;
-  return jsonSchema;
 }
