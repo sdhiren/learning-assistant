@@ -1,6 +1,6 @@
 # Design: multiple AI providers, Anthropic API key first (B14)
 
-Status: **stage 1 in progress** · Backlog:
+Status: **stage 1 done** (Anthropic API key, then OpenAI and Gemini in LA-2) · Backlog:
 [B14](../BACKLOG.md#b14-multiple-ai-providers-anthropic-api-key-first--in-progress--m)
 
 ## Requirement
@@ -33,16 +33,15 @@ official API SDK is simpler, faster and gives clear errors.
 
 `src/server/ai/providers.ts` is pure data, with no SDK imports:
 
-| `ProviderId`            | Label  | Default model     | Key variable        | Status (stage 1)  |
-| ----------------------- | ------ | ----------------- | ------------------- | ----------------- |
-| `claude-code` (default) | Claude | `claude-opus-5-5` | none                | implemented       |
-| `anthropic`             | Claude | `claude-opus-5-5` | `ANTHROPIC_API_KEY` | implemented       |
-| `openai`                | GPT    | placeholder       | `OPENAI_API_KEY`    | not available yet |
-| `gemini`                | Gemini | placeholder       | `GEMINI_API_KEY`    | not available yet |
+| `ProviderId`            | Label  | Default model     | Key variable        | Client               |
+| ----------------------- | ------ | ----------------- | ------------------- | -------------------- |
+| `claude-code` (default) | Claude | `claude-opus-5-5` | none                | `ClaudeAgentClient`  |
+| `anthropic`             | Claude | `claude-opus-5-5` | `ANTHROPIC_API_KEY` | `AnthropicApiClient` |
+| `openai`                | GPT    | `gpt-5`           | `OPENAI_API_KEY`    | `OpenAiClient`       |
+| `gemini`                | Gemini | `gemini-2.5-pro`  | `GEMINI_API_KEY`    | `GeminiClient`       |
 
-Each entry also carries `needsKey`, `implemented` and a `usageNote` (the footer text). The OpenAI
-and Gemini PRs add a client file, confirm the default model, flip `implemented`, and add a case to
-`createLlmClient`.
+Each entry also carries `needsKey`, `implemented` and a `usageNote` (the footer text). All four are
+implemented; a future provider adds a client file, an entry here and a case in `createLlmClient`.
 
 ### Configuration (stage 1: env vars)
 
@@ -51,8 +50,8 @@ and Gemini PRs add a client file, confirm the default model, flip `implemented`,
 - `CLAUDE_MODEL`: deprecated alias for `AI_MODEL`, honoured for `claude-code` and `anthropic` when
   `AI_MODEL` is unset. Logs one deprecation warning.
 - `env.ts` validates at startup (called from `src/instrumentation.ts`): a provider that needs a key fails with "AI_PROVIDER=anthropic
-  needs ANTHROPIC_API_KEY (set it in .env.local)"; an unimplemented provider fails with
-  "AI_PROVIDER=openai is not available yet". Validation errors print messages, never values.
+  needs ANTHROPIC_API_KEY (set it in .env.local)"; an unimplemented provider (none today) fails with
+  "AI_PROVIDER=<id> is not available yet". Validation errors print messages, never values.
 - `createLlmClient(config)` in `container.ts` switches on the provider (exhaustive). The UI gets
   only `{ label, usageNote }` from `getAiProviderInfo()`, through the root layout and a client
   context; the key never leaves the server.
@@ -99,6 +98,66 @@ and Gemini PRs add a client file, confirm the default model, flip `implemented`,
 `redactSecrets(text, secrets)` removes known keys and any `sk-ant-…`, `sk-…` or `AIza…` token;
 `safeErrorContext(error)` keeps only `{ name, status, type, requestId }` for logs.
 
+## Schema adapter (`schema-adapter.ts`)
+
+`toProviderJsonSchema(schema, provider)` starts from `z.toJSONSchema(schema, { io: "output" })`
+(minus `$schema`) and walks the tree (`properties`, `items`, `anyOf`, `$defs`). It keeps only the
+keywords on each provider's **allowlist** (`PROVIDER_SCHEMA_KEYWORDS`), so a new zod feature
+can't leak an unsupported keyword silently:
+
+| Provider      | Kept                                                                                                                            | Removed (zod still enforces them afterwards)                       |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `claude-code` | everything (base schema only)                                                                                                   | `$schema`                                                          |
+| `openai`      | `type properties required additionalProperties items enum anyOf description const $defs $ref minimum maximum minItems maxItems` | `minLength`, `maxLength`, `pattern`, `format`, safe-integer bounds |
+| `gemini`      | the same without `const`                                                                                                        | as above, plus `const`                                             |
+
+For OpenAI strict mode, every object also gets `additionalProperties: false` and a `required`
+list naming every property. An `.optional()` property throws a developer error naming its path
+(use `.nullable()`), and the root must be an object. Nullables stay as zod emits them
+(`type: [X, "null"]` or `anyOf`), which both providers accept. `AnthropicApiClient` keeps the SDK's
+`zodOutputFormat`. `AI_SCHEMAS` in `schemas.ts` lists all seven schemas for tests and the smoke
+script.
+
+## `OpenAiClient`
+
+- **Request:** `responses.create` (non-streaming) with `instructions` (the system prompt),
+  `input`, `store: false`, `max_output_tokens: 64000` (reasoning tokens count against it) and
+  `text.format = { type: "json_schema", name: <task>, schema, strict: true }`.
+- **Effort:** `low/medium/high` map 1:1 to `reasoning.effort`. `gpt-5` is a reasoning model, so
+  there is no capability check: an `AI_MODEL` override **must be a reasoning model** (gpt-5
+  family or o-series), or OpenAI rejects the request with a 400.
+- **Checked before parsing:** a `refusal` content item → `refused`; `status: incomplete` with
+  `content_filter` → `refused`, any other incomplete reason → `truncated`.
+- **Logging:** input, output, cached (`cacheRead`) and reasoning tokens.
+
+## `GeminiClient`
+
+- **Request:** `models.generateContent` with `systemInstruction`,
+  `responseMimeType: "application/json"`, `responseJsonSchema`, `maxOutputTokens: 65536` (the 2.5
+  Pro maximum; thinking tokens count against it) and the deadline's `abortSignal`. The key travels
+  in the `x-goog-api-key` header. The SDK retries 408, 429 and 5xx (`retryOptions.attempts: 3`).
+- **Effort → `thinkingConfig.thinkingBudget`:** low 2048, medium 8192, high 24576. Fixed values
+  rather than `-1` (dynamic) keep the output ceiling predictable; 2.5 Pro can't turn thinking off.
+  Gemini 3 models still accept `thinkingBudget`.
+- **Checked before parsing:** `promptFeedback.blockReason`, or `finishReason` SAFETY, RECITATION,
+  PROHIBITED_CONTENT, BLOCKLIST or SPII → `refused`; `MAX_TOKENS` → `truncated`. Thought parts are
+  ignored.
+- **Logging:** prompt, candidates, cached and thoughts token counts.
+
+### Error triggers per provider
+
+| Kind           | Anthropic                             | OpenAI                              | Gemini                                     |
+| -------------- | ------------------------------------- | ----------------------------------- | ------------------------------------------ |
+| `invalid_key`  | 401, 403                              | 401, 403                            | 401, 403, or a 400 "API key not valid"     |
+| `no_credit`    | `billing_error`, 400 "credit balance" | 429 with `code: insufficient_quota` | 429 whose message mentions billing/prepaid |
+| `rate_limited` | 429                                   | any other 429                       | any other 429                              |
+| `overloaded`   | 529 / `overloaded_error`              | 503                                 | 503                                        |
+| `timeout`      | SDK timeout or the deadline           | SDK timeout or the deadline         | abort or the deadline                      |
+| `unavailable`  | anything else                         | anything else                       | anything else                              |
+
+Error contexts: OpenAI is "GPT" / "OpenAI" / `OPENAI_API_KEY`; Gemini is "Gemini" / "Google AI
+Studio" / `GEMINI_API_KEY`.
+
 ## The subscription billing trap (fixed)
 
 The subscription client used to pass the whole `process.env` to Claude Code, so a stray
@@ -112,7 +171,7 @@ User-facing strings in `src/app` and `src/components` (progress messages, footer
 instructions field, review messages, metadata) use the provider label and usage note; service
 errors use `llm.providerLabel`. An ESLint `no-restricted-syntax` rule fails `npm run check` if a
 literal "Claude" string returns there. A second rule keeps each provider SDK inside its client
-file under `src/server/ai/`.
+file under `src/server/ai/`, and each client file may import only its own SDK.
 
 ## Stage 2: settings page (unchanged plan)
 
@@ -151,15 +210,22 @@ Rules for the settings page:
 
 ## Testing
 
-- `anthropic-api-client.test.ts` (mocked `fetch`, streamed SSE): success and request shape,
-  schema-invalid output, `max_tokens`, `refusal`, 401, billing, 429, 529, 500, timeout, and the
-  key-leak check.
+- `llm-client.contract.test.ts`: `describe.each` over `anthropic`, `openai` and `gemini` with
+  fake HTTP transports (`src/test/provider-harness.ts`). Every schema in `AI_SCHEMAS` round-trips.
+  Non-JSON and schema-invalid output (including constraints the adapter removed), refusal,
+  truncation, invalid key, no credit, 429, overloaded, 5xx and timeout each throw exactly
+  `mapProviderError(kind, ctx).message` with no `cause`. The key, echoed in error bodies and
+  headers, never reaches the error or the console.
+- `schema-adapter.test.ts`: snapshots, allowlists, strict-mode objects, the `.optional()` throw.
+- `anthropic-api-client.test.ts`, `openai-client.test.ts`, `gemini-client.test.ts`: request
+  shape, effort mapping, output caps, usage logging and provider-specific errors.
 - `claude-agent-client.test.ts`: the `env` passed to `query()` has no `ANTHROPIC_API_KEY` or
   `ANTHROPIC_AUTH_TOKEN` but keeps `PATH` and `CLAUDE_AGENT_SDK_CLIENT_APP`.
 - `env.test.ts`, `provider-errors.test.ts`, `container.test.ts`, and a service test for the
   provider label in error copy.
-- **Manual contract check** with a real key: every task (skill tree, subtopic, quiz, reading,
-  short-answer, code-output and coding-challenge grading) returns schema-valid output.
+- **Manual contract check** with a real key: `make smoke-provider PROVIDER=<id> TASKS=all` runs
+  every task (skill tree, subtopic, quiz with `toQuestionDraft`, reading, short-answer,
+  code-output and coding-challenge grading) and prints pass or fail for each.
 
 ## Open questions
 
@@ -174,6 +240,7 @@ Rules for the settings page:
 
 1. Provider registry, `AnthropicApiClient`, env-var configuration, shared error mapping, the
    subscription env fix, provider-neutral copy. **M** (this PR)
-2. `OpenAiClient` and `GeminiClient`, one PR each. **S** each.
+2. `OpenAiClient` and `GeminiClient`, the schema adapter, the contract suite and the smoke
+   script. **M** (done in LA-2, one PR by the owner's decision)
 3. Settings page with Keychain storage, validation and the cost display. **M**, after B13 if keys
    are per profile.

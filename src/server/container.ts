@@ -2,7 +2,9 @@ import "server-only";
 
 import { AnthropicApiClient } from "@/server/ai/anthropic-api-client";
 import { ClaudeAgentClient } from "@/server/ai/claude-agent-client";
+import { GeminiClient } from "@/server/ai/gemini-client";
 import type { LlmClient } from "@/server/ai/llm-client";
+import { OpenAiClient } from "@/server/ai/openai-client";
 import { PROVIDERS, type ProviderId } from "@/server/ai/providers";
 import { getAiConfig, getEnv, type AiConfig } from "@/server/config/env";
 import { createDatabase, type AppDatabase } from "@/server/db/client";
@@ -47,8 +49,19 @@ export function createLlmClient(config: AiConfig): LlmClient {
         timeoutMs: config.timeoutMs,
       });
     case "openai":
+      if (!config.apiKey) throw new Error("AI_PROVIDER=openai needs OPENAI_API_KEY");
+      return new OpenAiClient({
+        apiKey: config.apiKey,
+        model: config.model,
+        timeoutMs: config.timeoutMs,
+      });
     case "gemini":
-      throw new Error(`AI_PROVIDER=${config.provider} is not available yet`);
+      if (!config.apiKey) throw new Error("AI_PROVIDER=gemini needs GEMINI_API_KEY");
+      return new GeminiClient({
+        apiKey: config.apiKey,
+        model: config.model,
+        timeoutMs: config.timeoutMs,
+      });
     default: {
       const unknown: never = config.provider;
       throw new Error(`Unknown AI_PROVIDER: ${String(unknown)}`);

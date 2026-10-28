@@ -18,11 +18,13 @@
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.289",
     "@anthropic-ai/sdk": "^0.131.0",
+    "@google/genai": "2.31.0",
     "better-sqlite3": "^12.11.1",
     "drizzle-orm": "^0.45.3",
     "hast-util-to-jsx-runtime": "^2.3.6",
     "lowlight": "^3.3.0",
     "next": "16.3.8",
+    "openai": "7.45.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-markdown": "^10.1.0",

@@ -73,10 +73,15 @@ export function sseMessage({
 }
 
 /** A JSON error response in the API's error shape. */
-export function apiError(status: number, type: string, message: string): Response {
+export function apiError(
+  status: number,
+  type: string,
+  message: string,
+  headers: Record<string, string> = {},
+): Response {
   return new Response(JSON.stringify({ type: "error", error: { type, message } }), {
     status,
-    headers: { "content-type": "application/json", "request-id": "req_test_error" },
+    headers: { "content-type": "application/json", "request-id": "req_test_error", ...headers },
   });
 }
 

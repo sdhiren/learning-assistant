@@ -126,3 +126,15 @@ export const readingSchema = z.object({
     .describe("Short, plain-language points worth memorising for interviews."),
 });
 export type ReadingOutput = z.infer<typeof readingSchema>;
+
+/** Every schema sent to a model, by name. Tests and the smoke script iterate over this. */
+export const AI_SCHEMAS = {
+  skillTree: skillTreeSchema,
+  newSubtopic: newSubtopicSchema,
+  generatedQuiz: generatedQuizSchema,
+  codeReview: codeReviewSchema,
+  outputJudgement: outputJudgementSchema,
+  shortAnswerGrade: shortAnswerGradeSchema,
+  reading: readingSchema,
+} as const satisfies Record<string, z.ZodType>;
+export type AiSchemaName = keyof typeof AI_SCHEMAS;

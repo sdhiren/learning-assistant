@@ -36,20 +36,18 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
   },
   openai: {
     label: "GPT",
-    // Placeholder: the OpenAI client PR confirms the default model.
     defaultModel: "gpt-5",
     keyEnvVar: "OPENAI_API_KEY",
     needsKey: true,
-    implemented: false,
+    implemented: true,
     usageNote: "Runs locally with your OpenAI API key.",
   },
   gemini: {
     label: "Gemini",
-    // Placeholder: the Gemini client PR confirms the default model.
     defaultModel: "gemini-2.5-pro",
     keyEnvVar: "GEMINI_API_KEY",
     needsKey: true,
-    implemented: false,
+    implemented: true,
     usageNote: "Runs locally with your Gemini API key.",
   },
 };

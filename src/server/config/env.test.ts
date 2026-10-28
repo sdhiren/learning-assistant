@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { PROVIDERS } from "@/server/ai/providers";
+
 import { parseEnv, resolveAiConfig } from "./env";
 
 const config = (source: Record<string, string | undefined>) => resolveAiConfig(parseEnv(source));
@@ -53,10 +55,38 @@ describe("AI configuration", () => {
     );
   });
 
-  it.each(["openai", "gemini"])("rejects %s as not available yet", (provider) => {
-    expect(() =>
-      parseEnv({ AI_PROVIDER: provider, OPENAI_API_KEY: "k", GEMINI_API_KEY: "k" }),
-    ).toThrow(`AI_PROVIDER=${provider} is not available yet`);
+  it.each([
+    ["openai", "OPENAI_API_KEY", "gpt-5"],
+    ["gemini", "GEMINI_API_KEY", "gemini-2.5-pro"],
+  ])("accepts %s with %s and defaults to %s", (provider, keyEnvVar, model) => {
+    expect(() => parseEnv({ AI_PROVIDER: provider })).toThrow(
+      `AI_PROVIDER=${provider} needs ${keyEnvVar} (set it in .env.local)`,
+    );
+    expect(config({ AI_PROVIDER: provider, [keyEnvVar]: "key-value" })).toEqual({
+      provider,
+      model,
+      apiKey: "key-value",
+      timeoutMs: 180_000,
+    });
+  });
+
+  it("ignores CLAUDE_MODEL for the non-Claude providers", () => {
+    expect(
+      config({ AI_PROVIDER: "openai", OPENAI_API_KEY: "k", CLAUDE_MODEL: "claude-sonnet-5-5" })
+        .model,
+    ).toBe("gpt-5");
+  });
+
+  it("rejects a provider that has no client yet", () => {
+    const gemini = PROVIDERS.gemini;
+    PROVIDERS.gemini = { ...gemini, implemented: false };
+    try {
+      expect(() => parseEnv({ AI_PROVIDER: "gemini", GEMINI_API_KEY: "k" })).toThrow(
+        "AI_PROVIDER=gemini is not available yet. Use claude-code, anthropic or openai.",
+      );
+    } finally {
+      PROVIDERS.gemini = gemini;
+    }
   });
 
   it("never echoes key values in validation errors", () => {

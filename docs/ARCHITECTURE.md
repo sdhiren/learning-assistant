@@ -11,7 +11,7 @@ Phase 1 goals:
 - Generate focused lessons per concept.
 
 Constraints: runs only on the user's machine, uses the user's Claude subscription by default
-(an Anthropic API key is optional, chosen with `AI_PROVIDER`), and has no login.
+(an Anthropic, OpenAI or Gemini API key is optional, chosen with `AI_PROVIDER`), and has no login.
 
 ## High-level design
 
@@ -49,14 +49,14 @@ Services depend on the `LlmClient` interface and on repositories, never on Next.
 
 ## Key decisions
 
-| Decision       | Choice                                                                                                                                    | Why                                                                                           | Trade-off                                                                                               |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Model access   | Provider registry (`server/ai/providers.ts`): Claude Agent SDK on the local Claude Code login by default, or the Anthropic API with a key | Subscription needs no key to manage; the API path is faster, has typed errors and token usage | Subscription: local use only, shares the plan's limits, ~1 s subprocess per call. API: billed per token |
-| Model boundary | `LlmClient` interface with one `generateStructured` method                                                                                | Provider can be swapped (for example to an API key) and tests use a fake                      | One more layer of indirection                                                                           |
-| Output format  | JSON-schema structured output, validated again with zod                                                                                   | Model output is never trusted as-is                                                           | Schemas are kept flat and permissive; stricter per-type checks happen in `question-validation.ts`       |
-| Storage        | SQLite via better-sqlite3 and Drizzle, with migrations applied at startup                                                                 | Zero setup, a single file, transactional                                                      | Single writer; fine for one user                                                                        |
-| Mutations      | Server Actions                                                                                                                            | Built-in CSRF origin check, typed end to end, no hand-written API                             | Dispatched one at a time per client (fine for this UI)                                                  |
-| Mastery        | Recency- and difficulty-weighted average per concept; "strong" requires at least 3 attempts                                               | Simple, explainable, testable                                                                 | Not a full knowledge-tracing model (planned for Phase 2)                                                |
+| Decision       | Choice                                                                                                                                                      | Why                                                                                           | Trade-off                                                                                               |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Model access   | Provider registry (`server/ai/providers.ts`): Claude Agent SDK on the local Claude Code login by default, or the Anthropic, OpenAI or Gemini API with a key | Subscription needs no key to manage; the API path is faster, has typed errors and token usage | Subscription: local use only, shares the plan's limits, ~1 s subprocess per call. API: billed per token |
+| Model boundary | `LlmClient` interface with one `generateStructured` method                                                                                                  | Provider can be swapped (for example to an API key) and tests use a fake                      | One more layer of indirection                                                                           |
+| Output format  | JSON-schema structured output (converted per provider by `schema-adapter.ts`), validated again with zod                                                     | Model output is never trusted as-is                                                           | Schemas are kept flat and permissive; stricter per-type checks happen in `question-validation.ts`       |
+| Storage        | SQLite via better-sqlite3 and Drizzle, with migrations applied at startup                                                                                   | Zero setup, a single file, transactional                                                      | Single writer; fine for one user                                                                        |
+| Mutations      | Server Actions                                                                                                                                              | Built-in CSRF origin check, typed end to end, no hand-written API                             | Dispatched one at a time per client (fine for this UI)                                                  |
+| Mastery        | Recency- and difficulty-weighted average per concept; "strong" requires at least 3 attempts                                                                 | Simple, explainable, testable                                                                 | Not a full knowledge-tracing model (planned for Phase 2)                                                |
 
 ## Data model
 
@@ -161,6 +161,12 @@ triggers. Test every migration against a copy of a real database (`make db-backu
 - **Integration tests** run the real services and repositories against an in-memory SQLite
   database with a `FakeLlmClient`. They cover the quiz lifecycle, answer-key secrecy, duplicate
   answers and cascading deletes.
+- **Provider contract suite** (`llm-client.contract.test.ts`): the Anthropic, OpenAI and Gemini
+  clients run against fake HTTP transports. Each must parse every schema in `AI_SCHEMAS` and map
+  refusals, truncation, bad output and every HTTP error class to the same friendly message,
+  without leaking the key. `schema-adapter.test.ts` checks each provider's JSON Schema dialect.
+- **Provider smoke test:** `make smoke-provider PROVIDER=<id> TASKS=all` makes real calls for
+  every schema and prints pass or fail per task. Run it after changing provider, model or prompts.
 - **Manual end-to-end:** the full flow has been run against real Claude through the browser.
 
 Run everything with `npm run check`.
@@ -173,6 +179,6 @@ Run everything with `npm run check`.
   Streaming progress would improve the experience.
 - Answer keys are checked structurally but not independently re-solved. A verification pass
   (or running code-output snippets) is planned.
-- OpenAI and Gemini are in the provider registry but not implemented. Each needs an `LlmClient`
-  in `server/ai/`, a case in `createLlmClient`, and its `implemented` flag flipped. API keys
-  live in `.env.local` until the Keychain-backed settings page (B14 stage 2).
+- Prompts were written for Claude. OpenAI and Gemini pass the smoke test, but answer quality on
+  them may differ; per-provider prompt tweaks are a follow-up. API keys live in `.env.local`
+  until the Keychain-backed settings page (B14 stage 2).
