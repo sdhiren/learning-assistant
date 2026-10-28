@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } fr
 import { z } from "zod";
 
 import { AiGenerationError } from "@/lib/errors";
-import { apiError, hangingFetch, sseMessage } from "@/test/anthropic-fetch";
+import { apiError, sseMessage } from "@/test/anthropic-fetch";
 
 import { AnthropicApiClient } from "./anthropic-api-client";
 import type { StructuredRequest } from "./llm-client";
@@ -106,84 +106,20 @@ describe("AnthropicApiClient", () => {
     expect(logged).not.toContain(request.systemPrompt);
   });
 
-  it.each([
-    [
-      "schema-invalid output",
-      () => sseMessage({ json: { answer: 42 } }),
-      "Claude returned an unexpected response",
-    ],
-    ["non-JSON output", () => sseMessage({ text: "not json" }), "unexpected response"],
-    [
-      "max_tokens",
-      () => sseMessage({ text: '{"answer": "trunc', stopReason: "max_tokens" }),
-      "Claude's response was cut off",
-    ],
-    [
-      "refusal",
-      () => sseMessage({ text: "", stopReason: "refusal" }),
-      "Claude declined this request",
-    ],
-    [
-      "401",
-      () => apiError(401, "authentication_error", `invalid x-api-key ${API_KEY}`),
-      "Your Anthropic API key was rejected. Check ANTHROPIC_API_KEY",
-    ],
-    [
-      "a billing error",
-      () => apiError(400, "billing_error", `Your credit balance is too low (key ${API_KEY})`),
-      "out of credit",
-    ],
-    [
-      "a low credit balance 400",
-      () =>
-        apiError(400, "invalid_request_error", "Your credit balance is too low to access the API"),
-      "out of credit",
-    ],
-    [
-      "429",
-      () => apiError(429, "rate_limit_error", `Rate limited for ${API_KEY}`),
-      "Claude is rate-limiting requests",
-    ],
-    [
-      "529",
-      () => apiError(529, "overloaded_error", "Overloaded"),
-      "Claude is overloaded right now",
-    ],
-    [
-      "an unexpected 500",
-      () => apiError(500, "api_error", `Internal error ${API_KEY}`),
-      "Claude couldn't complete the request",
-    ],
-  ])("maps %s to a friendly message without leaking the key", async (_name, response, message) => {
-    const error = await failureOf(clientWith(respondWith(response)).generateStructured(request));
-
-    expect(error.message).toContain(message);
-    expect(error.message).not.toContain(API_KEY);
-    expect(error.cause).toBeUndefined();
-    expect(JSON.stringify(error)).not.toContain(API_KEY);
-  });
-
-  it("maps a request that outlives the timeout to the timeout message", async () => {
-    const error = await failureOf(clientWith(hangingFetch, 50).generateStructured(request));
-
-    expect(error.message).toBe("Claude took too long to respond. Please try again.");
-  });
-
-  it("never logs the key even when the error carries it in headers and body", async () => {
-    const fetchMock = vi.fn<typeof fetch>(
-      async () =>
-        new Response(
-          JSON.stringify({ type: "error", error: { type: "api_error", message: API_KEY } }),
-          {
-            status: 500,
-            headers: { "content-type": "application/json", "x-echo-key": API_KEY },
-          },
+  // Generic success and failure cases live in llm-client.contract.test.ts.
+  it("maps a 400 about a low credit balance to the no-credit message", async () => {
+    const error = await failureOf(
+      clientWith(
+        respondWith(() =>
+          apiError(
+            400,
+            "invalid_request_error",
+            "Your credit balance is too low to access the API",
+          ),
         ),
+      ).generateStructured(request),
     );
 
-    const error = await failureOf(clientWith(fetchMock).generateStructured(request));
-
-    expect(String(error.cause ?? "")).not.toContain(API_KEY);
-    expect(vi.mocked(console.warn)).toHaveBeenCalled();
+    expect(error.message).toContain("Your Anthropic API account is out of credit");
   });
 });
