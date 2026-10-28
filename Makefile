@@ -11,7 +11,7 @@ BACKUP_DIR    := ./data/backups
 MIN_NODE      := 22.12.0
 
 .DEFAULT_GOAL := help
-.PHONY: help doctor setup install env dev build start test check lint format \
+.PHONY: help doctor setup install env dev build start test check smoke-provider lint format \
         db-migrate db-generate db-shell db-backup db-reset clean
 
 help: ## Show this help
@@ -41,7 +41,13 @@ doctor: ## Check prerequisites (Node.js version, AI provider login or API key)
 			|| { echo "✗ Claude Code is not logged in. Run 'claude' once and log in."; exit 1; }; \
 		if [ -n "$$(setting ANTHROPIC_API_KEY)" ]; then \
 			echo "! ANTHROPIC_API_KEY is set but ignored in claude-code mode (set AI_PROVIDER=anthropic to use it)."; fi ;; \
-	*) echo "✗ AI_PROVIDER=$$provider is not available yet. Use claude-code or anthropic."; exit 1 ;; \
+	openai) \
+		[ -n "$$(setting OPENAI_API_KEY)" ] && echo "✓ OPENAI_API_KEY is set" \
+			|| { echo "✗ AI_PROVIDER=openai needs OPENAI_API_KEY (set it in .env.local)"; exit 1; } ;; \
+	gemini) \
+		[ -n "$$(setting GEMINI_API_KEY)" ] && echo "✓ GEMINI_API_KEY is set" \
+			|| { echo "✗ AI_PROVIDER=gemini needs GEMINI_API_KEY (set it in .env.local)"; exit 1; } ;; \
+	*) echo "✗ Unknown AI_PROVIDER=$$provider. Use claude-code, anthropic, openai or gemini."; exit 1 ;; \
 	esac
 
 setup: doctor install env db-migrate ## First-time setup: check, install, create config and database
@@ -73,6 +79,9 @@ test: ## Run the test suite
 
 check: ## Lint, typecheck, format check and tests (run before committing)
 	npm run check
+
+smoke-provider: ## Real AI calls through PROVIDER=<id> (TASKS=all for every schema)
+	@npx tsx --conditions=react-server --tsconfig tsconfig.json scripts/smoke-provider.ts
 
 lint: ## Run ESLint
 	npm run lint
