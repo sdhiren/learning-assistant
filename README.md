@@ -20,6 +20,11 @@ key instead (see [Choosing a provider](#choosing-a-provider)).
   "write a function that…" challenge. You edit the starter code in a code editor, and Claude
   reviews your solution for correctness, edge cases and complexity, then shows a reference
   solution. Your code is reviewed, never run.
+- **Usage page** (`/settings/usage`, linked from the header). For the last 30 days it shows
+  calls, failures and p50/p95 latency per AI task; for this month it shows tokens and cost per
+  provider and model. API-key costs are estimates from a dated list-price table. The Claude
+  subscription shows the SDK's API-equivalent cost, which is not billed and is never added to
+  API costs. Prompts, answers and keys are never recorded.
 - **Delete a subtopic** you no longer want, as long as you haven't answered any of its questions
   (your quiz history is never lost).
 - **Your own subtopics.** Add a subtopic to any topic (for example "Node.js event loop
@@ -150,6 +155,9 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design and the reasonin
 - **"Claude couldn't complete the request…"**: run `claude` in a terminal to check that you
   are logged in, and check whether you've reached your plan's usage limit.
 - **"Claude took too long to respond"**: try again, or raise `AI_TIMEOUT_MS`.
+- **Reading the server logs:** each line is one JSON object (`ts`, `level`, `msg`, and the
+  action's `requestId`), so `grep '"requestId":"<id>"'` or `jq` work; the old
+  `[learning-assistant]` prefix is gone. Set `LOG_LEVEL=debug|info|warn|error` in `.env.local`.
 - **Start over:** run `make db-reset` (consider `make db-backup` first).
 - **Port 3000 already in use:** run `make dev PORT=4000`.
 
