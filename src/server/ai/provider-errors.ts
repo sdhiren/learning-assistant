@@ -12,6 +12,28 @@ export type ProviderErrorKind =
   | "bad_output"
   | "unavailable";
 
+export const PROVIDER_ERROR_KINDS = [
+  "invalid_key",
+  "no_credit",
+  "rate_limited",
+  "overloaded",
+  "timeout",
+  "refused",
+  "truncated",
+  "bad_output",
+  "unavailable",
+] as const satisfies readonly ProviderErrorKind[];
+
+/** An AiGenerationError that also carries its failure category, for usage records. */
+export class ProviderError extends AiGenerationError {
+  constructor(
+    readonly kind: ProviderErrorKind,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
 export interface ProviderErrorContext {
   /** e.g. "Claude", "GPT". */
   providerLabel: string;
@@ -22,13 +44,13 @@ export interface ProviderErrorContext {
 }
 
 /**
- * A friendly AiGenerationError for a provider failure. Deliberately has no
+ * A friendly ProviderError for a provider failure. Deliberately has no
  * `cause`: SDK errors can carry request headers and response bodies.
  */
 export function mapProviderError(
   kind: ProviderErrorKind,
   { providerLabel, vendorName, keyEnvVar }: ProviderErrorContext,
-): AiGenerationError {
+): ProviderError {
   const messages: Record<ProviderErrorKind, string> = {
     invalid_key: `Your ${vendorName} API key was rejected. Check ${keyEnvVar} in .env.local and restart the app.`,
     no_credit: `Your ${vendorName} API account is out of credit. Add credit in the ${vendorName} console, then try again.`,
@@ -40,7 +62,7 @@ export function mapProviderError(
     bad_output: `${providerLabel} returned an unexpected response. Please try again.`,
     unavailable: `${providerLabel} couldn't complete the request. Please try again in a moment.`,
   };
-  return new AiGenerationError(messages[kind]);
+  return new ProviderError(kind, messages[kind]);
 }
 
 /** Token shapes used by the supported providers' API keys. */

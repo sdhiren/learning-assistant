@@ -86,22 +86,24 @@ describe("GeminiClient", () => {
     },
   );
 
-  it("ignores thought parts and logs token usage, but not prompts or output", async () => {
-    await clientWith(
-      respondWith(() =>
-        geminiResponse({
-          json: { answer: "secret-output" },
-          usage: { thoughtsTokenCount: 30, cachedContentTokenCount: 42 },
-        }),
-      ),
-    ).generateStructured(request);
+  it("ignores thought parts, counts thinking as output tokens, and logs no prompts or output", async () => {
+    const onUsage = vi.fn();
+    await expect(
+      clientWith(
+        respondWith(() =>
+          geminiResponse({
+            json: { answer: "secret-output" },
+            usage: { thoughtsTokenCount: 30, cachedContentTokenCount: 42 },
+          }),
+        ),
+      ).generateStructured(request, { onUsage }),
+    ).resolves.toEqual({ answer: "secret-output" });
 
-    const [, context] = vi.mocked(console.info).mock.calls.at(-1)!;
-    expect(context).toMatchObject({
-      provider: "gemini",
-      model: "gemini-2.5-pro",
-      finishReason: "STOP",
-      usage: { input: 100, output: 50, cacheRead: 42, thinking: 30 },
+    expect(onUsage).toHaveBeenCalledExactlyOnceWith({
+      inputTokens: 100,
+      outputTokens: 80,
+      cacheReadTokens: 42,
+      cacheWriteTokens: null,
     });
     const logged = JSON.stringify(vi.mocked(console.info).mock.calls);
     expect(logged).not.toContain("secret-output");

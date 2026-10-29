@@ -73,7 +73,8 @@ describe("OpenAiClient", () => {
     },
   );
 
-  it("logs task, model, duration, status and token usage, but not prompts or output", async () => {
+  it("reports tokens (output includes reasoning) and logs no prompts or output", async () => {
+    const onUsage = vi.fn();
     await clientWith(
       respondWith(() =>
         openAiResponse({
@@ -81,17 +82,14 @@ describe("OpenAiClient", () => {
           usage: { cached_tokens: 42, reasoning_tokens: 30 },
         }),
       ),
-    ).generateStructured(request);
+    ).generateStructured(request, { onUsage });
 
-    const [, context] = vi.mocked(console.info).mock.calls.at(-1)!;
-    expect(context).toMatchObject({
-      provider: "openai",
-      task: request.task,
-      model: "gpt-5",
-      status: "completed",
-      usage: { input: 100, output: 50, cacheRead: 42, reasoning: 30 },
+    expect(onUsage).toHaveBeenCalledExactlyOnceWith({
+      inputTokens: 100,
+      outputTokens: 50,
+      cacheReadTokens: 42,
+      cacheWriteTokens: null,
     });
-    expect(context).toHaveProperty("durationMs");
     const logged = JSON.stringify(vi.mocked(console.info).mock.calls);
     expect(logged).not.toContain("secret-output");
     expect(logged).not.toContain(request.prompt);

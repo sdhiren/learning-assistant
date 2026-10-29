@@ -5,7 +5,13 @@ import { ApiError, FinishReason, GoogleGenAI, type GenerateContentResponse } fro
 import { AiGenerationError } from "@/lib/errors";
 import { logger } from "@/server/logger";
 
-import type { LlmClient, ReasoningEffort, StructuredRequest } from "./llm-client";
+import type {
+  GenerationHooks,
+  LlmClient,
+  LlmUsage,
+  ReasoningEffort,
+  StructuredRequest,
+} from "./llm-client";
 import {
   mapProviderError,
   redactSecrets,
@@ -83,27 +89,14 @@ export class GeminiClient implements LlmClient {
     });
   }
 
-  async generateStructured<T>(request: StructuredRequest<T>): Promise<T> {
+  async generateStructured<T>(request: StructuredRequest<T>, hooks?: GenerationHooks): Promise<T> {
     const abortController = new AbortController();
     const deadline = setTimeout(() => abortController.abort(), this.options.timeoutMs);
     const startedAt = Date.now();
 
     try {
       const response = await this.send(request, abortController.signal);
-      const usage = response.usageMetadata;
-      logger.info("AI request ended", {
-        provider: "gemini",
-        task: request.task,
-        model: this.options.model,
-        durationMs: Date.now() - startedAt,
-        finishReason: response.candidates?.[0]?.finishReason,
-        usage: {
-          input: usage?.promptTokenCount ?? 0,
-          output: usage?.candidatesTokenCount ?? 0,
-          cacheRead: usage?.cachedContentTokenCount ?? 0,
-          thinking: usage?.thoughtsTokenCount ?? 0,
-        },
-      });
+      hooks?.onUsage?.(toUsage(response));
       return this.parseResponse(request, response);
     } catch (error) {
       if (error instanceof AiGenerationError) throw error;
@@ -174,6 +167,22 @@ export class GeminiClient implements LlmClient {
     logger.warn("AI response unusable", { provider: "gemini", task: request.task, kind });
     return mapProviderError(kind, ERROR_CONTEXT);
   }
+}
+
+/** Thinking tokens are billed as output, so they count towards `outputTokens`. */
+function toUsage(response: GenerateContentResponse): LlmUsage {
+  const usage = response.usageMetadata;
+  const candidates = usage?.candidatesTokenCount;
+  const thoughts = usage?.thoughtsTokenCount;
+  return {
+    inputTokens: usage?.promptTokenCount ?? null,
+    outputTokens:
+      candidates === undefined && thoughts === undefined
+        ? null
+        : (candidates ?? 0) + (thoughts ?? 0),
+    cacheReadTokens: usage?.cachedContentTokenCount ?? null,
+    cacheWriteTokens: null,
+  };
 }
 
 function classifyError(error: unknown, deadlinePassed: boolean): ProviderErrorKind {

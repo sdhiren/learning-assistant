@@ -56,7 +56,15 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               </span>
               learning-assistant
             </Link>
-            <ThemeToggle />
+            <nav className="flex items-center gap-3">
+              <Link
+                href="/settings/usage"
+                className="rounded-md px-2 py-1 text-sm text-muted transition-colors hover:text-ink"
+              >
+                Usage
+              </Link>
+              <ThemeToggle />
+            </nav>
           </div>
         </header>
         <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 sm:py-10">

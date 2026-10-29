@@ -79,6 +79,7 @@ export class ReadingService {
       }),
       schema: readingSchema,
       effort: "medium",
+      conceptId: concept.id,
     });
 
     this.readingRepository.upsert({

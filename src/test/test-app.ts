@@ -1,5 +1,8 @@
 import type { GeneratedQuestion, SkillTreeOutput } from "@/server/ai/schemas";
+import { InstrumentedLlmClient } from "@/server/ai/instrumented-llm-client";
 import { createDatabase } from "@/server/db/client";
+import { llmCalls } from "@/server/db/schema";
+import { LlmCallRepository } from "@/server/repositories/llm-call-repository";
 import { QuizRepository } from "@/server/repositories/quiz-repository";
 import { ReadingRepository } from "@/server/repositories/reading-repository";
 import { TopicRepository } from "@/server/repositories/topic-repository";
@@ -9,23 +12,37 @@ import { QuizService } from "@/server/services/quiz-service";
 import { ReadingService } from "@/server/services/reading-service";
 import { SubtopicService } from "@/server/services/subtopic-service";
 import { TopicService } from "@/server/services/topic-service";
+import { UsageService } from "@/server/services/usage-service";
 
 import { FakeLlmClient } from "./fake-llm-client";
 
-/** Wires the real services to an in-memory database and a fake LLM. */
+/**
+ * Wires the real services to an in-memory database and a fake LLM, wrapped
+ * in the same InstrumentedLlmClient the container uses.
+ */
 export function createTestApp({ providerLabel = "Claude" }: { providerLabel?: string } = {}) {
   const db = createDatabase(":memory:");
-  const llm = new FakeLlmClient(providerLabel);
+  const fake = new FakeLlmClient(providerLabel);
   let clock = new Date("2026-01-01T10:00:00Z").getTime();
   const now = () => new Date((clock += 1000));
 
   const topicRepository = new TopicRepository(db);
   const quizRepository = new QuizRepository(db);
+  const llmCallRepository = new LlmCallRepository(db);
   const progressService = new ProgressService(quizRepository);
+  const llm = new InstrumentedLlmClient(fake, {
+    provider: "claude-code",
+    model: "claude-opus-5-5",
+    sink: llmCallRepository,
+    now,
+  });
 
   return {
     db,
-    llm,
+    /** The fake behind the instrumented client: register responses and inspect requests. */
+    llm: fake,
+    llmCalls: () => db.select().from(llmCalls).all(),
+    usage: new UsageService(llmCallRepository, now),
     dashboard: new DashboardService(topicRepository, quizRepository, progressService, now),
     topics: new TopicService(topicRepository, quizRepository, progressService, llm, now),
     subtopics: new SubtopicService(topicRepository, progressService, llm),

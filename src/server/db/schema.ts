@@ -2,6 +2,7 @@ import { index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-or
 
 import { DIFFICULTIES } from "@/domain/difficulty";
 import { QUESTION_TYPES } from "@/domain/question";
+import { LLM_CALL_OUTCOMES } from "@/domain/usage-stats";
 
 export const QUIZ_STATUSES = ["in_progress", "completed"] as const;
 export type QuizStatus = (typeof QUIZ_STATUSES)[number];
@@ -153,6 +154,36 @@ export const readings = sqliteTable("readings", {
   instructions: text("instructions").notNull().default(""),
   createdAt: timestamp("created_at").notNull(),
 });
+
+/**
+ * One row per AI call: timings, outcome and token counts. Never prompts,
+ * answers or keys. `quiz_id`/`concept_id` are plain ids without foreign keys,
+ * so usage history survives deleting a topic.
+ */
+export const llmCalls = sqliteTable(
+  "llm_calls",
+  {
+    id: text("id").primaryKey(),
+    task: text("task").notNull(),
+    provider: text("provider").notNull(),
+    /** The configured model id (`AiConfig.model`). */
+    model: text("model").notNull(),
+    startedAt: timestamp("started_at").notNull(),
+    durationMs: integer("duration_ms").notNull(),
+    apiDurationMs: integer("api_duration_ms"),
+    outcome: text("outcome", { enum: LLM_CALL_OUTCOMES }).notNull(),
+    inputTokens: integer("input_tokens"),
+    outputTokens: integer("output_tokens"),
+    cacheReadTokens: integer("cache_read_tokens"),
+    cacheWriteTokens: integer("cache_write_tokens"),
+    /** Only a cost the provider reports itself (the Claude Agent SDK's estimate). */
+    costUsd: real("cost_usd"),
+    quizId: text("quiz_id"),
+    conceptId: text("concept_id"),
+    requestId: text("request_id"),
+  },
+  (table) => [index("llm_calls_started_at_idx").on(table.startedAt)],
+);
 
 export type TopicRow = typeof topics.$inferSelect;
 export type SubtopicRow = typeof subtopics.$inferSelect;

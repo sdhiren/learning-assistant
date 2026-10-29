@@ -13,7 +13,7 @@ import type { Response as OpenAiResponse } from "openai/resources/responses/resp
 import { AiGenerationError } from "@/lib/errors";
 import { logger } from "@/server/logger";
 
-import type { LlmClient, StructuredRequest } from "./llm-client";
+import type { GenerationHooks, LlmClient, LlmUsage, StructuredRequest } from "./llm-client";
 import {
   mapProviderError,
   redactSecrets,
@@ -65,27 +65,14 @@ export class OpenAiClient implements LlmClient {
     });
   }
 
-  async generateStructured<T>(request: StructuredRequest<T>): Promise<T> {
+  async generateStructured<T>(request: StructuredRequest<T>, hooks?: GenerationHooks): Promise<T> {
     const abortController = new AbortController();
     const deadline = setTimeout(() => abortController.abort(), this.options.timeoutMs);
     const startedAt = Date.now();
 
     try {
       const response = await this.send(request, abortController.signal);
-      logger.info("AI request ended", {
-        provider: "openai",
-        task: request.task,
-        model: this.options.model,
-        durationMs: Date.now() - startedAt,
-        status: response.status,
-        incompleteReason: response.incomplete_details?.reason,
-        usage: {
-          input: response.usage?.input_tokens ?? 0,
-          output: response.usage?.output_tokens ?? 0,
-          cacheRead: response.usage?.input_tokens_details?.cached_tokens ?? 0,
-          reasoning: response.usage?.output_tokens_details?.reasoning_tokens ?? 0,
-        },
-      });
+      hooks?.onUsage?.(toUsage(response));
       return this.parseResponse(request, response);
     } catch (error) {
       if (error instanceof AiGenerationError) throw error;
@@ -166,6 +153,17 @@ export class OpenAiClient implements LlmClient {
 /** The format name must match ^[a-zA-Z0-9_-]{1,64}$. */
 function formatName(task: string): string {
   return task.replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 64) || "output";
+}
+
+/** OpenAI's output tokens already include reasoning; cache writes aren't reported. */
+function toUsage(response: OpenAiResponse): LlmUsage {
+  const usage = response.usage;
+  return {
+    inputTokens: usage?.input_tokens ?? null,
+    outputTokens: usage?.output_tokens ?? null,
+    cacheReadTokens: usage?.input_tokens_details?.cached_tokens ?? null,
+    cacheWriteTokens: null,
+  };
 }
 
 function classifyError(error: unknown, deadlinePassed: boolean): ProviderErrorKind {
