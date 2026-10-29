@@ -29,6 +29,13 @@
       "when": 1792229812593,
       "tag": "0003_learner_instructions",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1793287841150,
+      "tag": "0004_llm_calls",
+      "breakpoints": true
     }
   ]
 }

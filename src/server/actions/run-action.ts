@@ -5,6 +5,7 @@ import { z } from "zod";
 import { failure, success, type ActionResult } from "@/lib/action-result";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/server/logger";
+import { runWithRequestContext } from "@/server/request-context";
 
 const UNEXPECTED_ERROR_MESSAGE = "Something went wrong. Please try again.";
 
@@ -12,11 +13,17 @@ const UNEXPECTED_ERROR_MESSAGE = "Something went wrong. Please try again.";
  * Runs a server action body and converts failures into an ActionResult:
  * validation errors become field errors, AppErrors keep their (safe)
  * messages, and anything else is logged and replaced with a generic message.
+ * The body runs in a request context, so its log lines and AI call records
+ * share one `requestId`.
  */
 export async function runAction<T>(
   name: string,
   body: () => Promise<T> | T,
 ): Promise<ActionResult<T>> {
+  return runWithRequestContext(name, () => runBody(name, body));
+}
+
+async function runBody<T>(name: string, body: () => Promise<T> | T): Promise<ActionResult<T>> {
   try {
     return success(await body());
   } catch (error) {

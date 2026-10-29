@@ -2,6 +2,7 @@ import type { ActivitySummary } from "@/domain/activity";
 import type { Difficulty } from "@/domain/difficulty";
 import type { Mastery, MasteryLevel } from "@/domain/mastery";
 import type { QuestionType } from "@/domain/question";
+import type { LlmCallOutcome } from "@/domain/usage-stats";
 import type { QuizStatus, SubtopicOrigin } from "@/server/db/schema";
 
 /**
@@ -166,4 +167,43 @@ export interface ReadingView {
     instructions: string;
     createdAt: Date;
   } | null;
+}
+
+export interface TaskUsageView {
+  task: string;
+  calls: number;
+  /** Failed calls per outcome; only outcomes that occurred. */
+  failures: Partial<Record<Exclude<LlmCallOutcome, "ok">, number>>;
+  failureCount: number;
+  /** Latency of successful calls, in ms; null when there were none. */
+  p50Ms: number | null;
+  p95Ms: number | null;
+}
+
+export interface ProviderUsageView {
+  provider: string;
+  /** e.g. "OpenAI API"; from the server so the UI never hard-codes a vendor. */
+  providerName: string;
+  model: string;
+  /** Subscription costs are API-equivalent and not billed. */
+  isSubscription: boolean;
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  /** Cost the provider reported itself, or null when it reports none. */
+  reportedCostUsd: number | null;
+  /** Estimate from the price table; null for unknown models or when a cost was reported. */
+  estimatedCostUsd: number | null;
+}
+
+export interface UsageView {
+  /** Per task over the last `windowDays` days, busiest first. */
+  tasks: TaskUsageView[];
+  windowDays: number;
+  /** Per provider and model for the current calendar month. No cross-provider total. */
+  providers: ProviderUsageView[];
+  monthStart: Date;
+  pricesAsOf: string;
 }

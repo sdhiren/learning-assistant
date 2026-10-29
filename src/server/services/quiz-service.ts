@@ -85,6 +85,7 @@ export class QuizService {
       }),
       schema: generatedQuizSchema,
       effort: "medium",
+      conceptId: input.focus.kind === "concept" ? input.focus.id : undefined,
     });
 
     const allowedConceptIds = new Set(promptConcepts.map((concept) => concept.id));
@@ -319,6 +320,8 @@ export class QuizService {
       }),
       schema: outputJudgementSchema,
       effort: "low",
+      quizId: quiz.id,
+      conceptId: question.conceptId,
     });
 
     const score = Math.min(clampScore(judgement.score), MAX_JUDGED_OUTPUT_SCORE);
@@ -346,6 +349,8 @@ export class QuizService {
       }),
       schema: codeReviewSchema,
       effort: "medium",
+      quizId: quiz.id,
+      conceptId: question.conceptId,
     });
 
     const score = clampScore(review.score);
@@ -377,6 +382,8 @@ export class QuizService {
       }),
       schema: shortAnswerGradeSchema,
       effort: "low",
+      quizId: quiz.id,
+      conceptId: question.conceptId,
     });
 
     const score = clampScore(grade.score);

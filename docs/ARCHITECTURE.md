@@ -31,7 +31,11 @@ Browser ──► proxy.ts (Host must be loopback)
                 server/repositories     server/ai/LlmClient
                         │                       │
                         ▼                       ▼
-                 SQLite (Drizzle)      createLlmClient(AI_PROVIDER)
+                 SQLite (Drizzle)      InstrumentedLlmClient ──▶ llm_calls row
+                        ▲               │   (timing, outcome,     + llm.call log line
+                        └───────────────┤    tokens; no content)
+                                        ▼
+                                createLlmClient(AI_PROVIDER)
                                         │                   │
                                         ▼                   ▼
                               ClaudeAgentClient      AnthropicApiClient
@@ -66,7 +70,27 @@ topics 1─* quizzes 1─* questions *─1 concepts
 quizzes *─0..1 subtopics / concepts (optional quiz focus)
 questions 1─1 attempts              (one graded answer per question)
 concepts 1─1 readings               (latest lesson)
+llm_calls                           (one row per AI call; standalone, no foreign keys)
 ```
+
+`llm_calls` holds task, provider, configured model, `started_at`, `duration_ms`,
+`api_duration_ms`, `outcome` (`ok | timeout | invalid_output | refused | auth | rate_limited |
+error`), input/output/cache-read/cache-write tokens, `cost_usd`, and optional `quiz_id`,
+`concept_id` and `request_id`. The ids are plain values without foreign keys, so deleting a topic
+keeps its usage history. `cost_usd` is only a cost the provider reports itself (the Claude Agent
+SDK's API-equivalent `total_cost_usd`); it is null for the API-key providers, whose cost the
+Usage page estimates at read time from the dated price table in `server/ai/pricing.ts`.
+
+**AI call instrumentation.** `createServices` wraps the provider client in
+`InstrumentedLlmClient`. Each call is timed, its outcome is classified from the typed
+`ProviderError.kind` (never message text: `no_credit` → `auth`, `overloaded` → `rate_limited`,
+`bad_output`/`truncated`/`ZodError` → `invalid_output`, `unavailable`/unknown → `error`), and
+exactly one row and one `llm.call` JSON log line are written (warn lines also carry the finer
+`kind`). Clients report tokens through the optional `onUsage` hook as soon as a response arrives,
+before parsing, so refused, truncated and invalid responses still record usage. A failed insert
+is logged at warn and never changes the call's result or error. `runAction` runs each action in
+an `AsyncLocalStorage` request context, so its log lines and `llm_calls` rows share a
+`requestId`.
 
 Subtopics have an `origin`: `generated` (part of the original skill map) or `learner` (added
 later). Subtopic names are unique per topic, ignoring case and spacing.
@@ -142,6 +166,11 @@ controls that make that safe:
   `x-powered-by` header is turned off.
 - **Error hygiene:** only `AppError` messages reach the UI. Unexpected errors are logged on the
   server and replaced with a generic message, and logs never include prompts or answers.
+- **Logs and usage records hold no prompts, answers or keys.** The logger writes one JSON line
+  per event (filtered by `LOG_LEVEL`) and passes every line through `redactSecrets`. The
+  instrumentation builds `llm_calls` rows and `llm.call` lines from an explicit allow-list and
+  never spreads the request or error objects. A test runs a full flow with sentinel strings in
+  the topic, goal, instructions and answer plus a fake key, and checks neither appears.
 - **Data:** `data/` and `.env*` are git-ignored.
 
 ## Migrations
@@ -161,6 +190,11 @@ triggers. Test every migration against a copy of a real database (`make db-backu
 - **Integration tests** run the real services and repositories against an in-memory SQLite
   database with a `FakeLlmClient`. They cover the quiz lifecycle, answer-key secrecy, duplicate
   answers and cascading deletes.
+- **Usage instrumentation:** `instrumented-llm-client.test.ts` covers the outcome for every
+  `ProviderErrorKind`, a `ZodError` and an unknown error, a throwing sink and the request id.
+  `usage.integration.test.ts` checks one `llm_calls` row per call through `createTestApp` (which
+  wraps the `FakeLlmClient` in the real decorator), the privacy sentinels, and the Usage
+  aggregates; `logger.test.ts` checks the JSON line format and `LOG_LEVEL`.
 - **Provider contract suite** (`llm-client.contract.test.ts`): the Anthropic, OpenAI and Gemini
   clients run against fake HTTP transports. Each must parse every schema in `AI_SCHEMAS` and map
   refusals, truncation, bad output and every HTTP error class to the same friendly message,

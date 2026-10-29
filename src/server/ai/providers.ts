@@ -6,6 +6,10 @@ export type ProviderId = (typeof PROVIDER_IDS)[number];
 export interface ProviderInfo {
   /** Short name used in user-facing copy, e.g. "Claude is writing your lesson". */
   label: string;
+  /** Name of the account or API, e.g. on the Usage page: "OpenAI API". */
+  displayName: string;
+  /** True when calls are covered by a subscription rather than billed per token. */
+  isSubscription: boolean;
   defaultModel: string;
   /** Environment variable that holds the API key, or null when the provider needs none. */
   keyEnvVar: string | null;
@@ -20,6 +24,8 @@ export interface ProviderInfo {
 export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
   "claude-code": {
     label: "Claude",
+    displayName: "Claude subscription",
+    isSubscription: true,
     defaultModel: "claude-opus-5-5",
     keyEnvVar: null,
     needsKey: false,
@@ -28,6 +34,8 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
   },
   anthropic: {
     label: "Claude",
+    displayName: "Anthropic API",
+    isSubscription: false,
     defaultModel: "claude-opus-5-5",
     keyEnvVar: "ANTHROPIC_API_KEY",
     needsKey: true,
@@ -36,6 +44,8 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
   },
   openai: {
     label: "GPT",
+    displayName: "OpenAI API",
+    isSubscription: false,
     defaultModel: "gpt-5",
     keyEnvVar: "OPENAI_API_KEY",
     needsKey: true,
@@ -44,6 +54,8 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
   },
   gemini: {
     label: "Gemini",
+    displayName: "Gemini API",
+    isSubscription: false,
     defaultModel: "gemini-2.5-pro",
     keyEnvVar: "GEMINI_API_KEY",
     needsKey: true,

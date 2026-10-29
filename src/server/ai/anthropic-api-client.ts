@@ -14,7 +14,7 @@ import type { Message } from "@anthropic-ai/sdk/resources/messages";
 import { AiGenerationError } from "@/lib/errors";
 import { logger } from "@/server/logger";
 
-import type { LlmClient, StructuredRequest } from "./llm-client";
+import type { GenerationHooks, LlmClient, LlmUsage, StructuredRequest } from "./llm-client";
 import {
   mapProviderError,
   redactSecrets,
@@ -66,26 +66,14 @@ export class AnthropicApiClient implements LlmClient {
     });
   }
 
-  async generateStructured<T>(request: StructuredRequest<T>): Promise<T> {
+  async generateStructured<T>(request: StructuredRequest<T>, hooks?: GenerationHooks): Promise<T> {
     const abortController = new AbortController();
     const deadline = setTimeout(() => abortController.abort(), this.options.timeoutMs);
     const startedAt = Date.now();
 
     try {
       const message = await this.send(request, abortController.signal);
-      logger.info("AI request ended", {
-        provider: "anthropic",
-        task: request.task,
-        model: this.options.model,
-        durationMs: Date.now() - startedAt,
-        stopReason: message.stop_reason,
-        usage: {
-          input: message.usage.input_tokens,
-          output: message.usage.output_tokens,
-          cacheRead: message.usage.cache_read_input_tokens ?? 0,
-          cacheWrite: message.usage.cache_creation_input_tokens ?? 0,
-        },
-      });
+      hooks?.onUsage?.(toUsage(message));
       return this.parseMessage(request, message);
     } catch (error) {
       if (error instanceof AiGenerationError) throw error;
@@ -159,6 +147,16 @@ export class AnthropicApiClient implements LlmClient {
     logger.warn("AI response unusable", { provider: "anthropic", task: request.task, kind });
     return mapProviderError(kind, ERROR_CONTEXT);
   }
+}
+
+/** Anthropic reports input excluding cache reads and writes, each separately. */
+function toUsage(message: Message): LlmUsage {
+  return {
+    inputTokens: message.usage.input_tokens,
+    outputTokens: message.usage.output_tokens,
+    cacheReadTokens: message.usage.cache_read_input_tokens ?? null,
+    cacheWriteTokens: message.usage.cache_creation_input_tokens ?? null,
+  };
 }
 
 function classifyError(error: unknown, deadlinePassed: boolean): ProviderErrorKind {

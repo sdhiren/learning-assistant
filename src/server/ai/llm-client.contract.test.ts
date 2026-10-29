@@ -7,7 +7,7 @@ import { PROVIDER_HARNESSES, type HttpErrorKind } from "@/test/provider-harness"
 import { SCHEMA_FIXTURES } from "@/test/schema-fixtures";
 
 import type { StructuredRequest } from "./llm-client";
-import { mapProviderError, type ProviderErrorKind } from "./provider-errors";
+import { mapProviderError, ProviderError, type ProviderErrorKind } from "./provider-errors";
 import { AI_SCHEMAS, type AiSchemaName } from "./schemas";
 
 /**
@@ -73,10 +73,46 @@ describe.each(["anthropic", "openai", "gemini"] as const)("LlmClient contract: %
       harness.makeClient(respondWith(response)).generateStructured(request),
     );
     expect(error.message).toBe(mapProviderError(kind, harness.errorContext).message);
+    expect(error).toBeInstanceOf(ProviderError);
+    expect((error as ProviderError).kind).toBe(kind);
     expect(error.cause).toBeUndefined();
     expect(JSON.stringify(error)).not.toContain(harness.apiKey);
     expect(String(error.stack)).not.toContain(harness.apiKey);
   }
+
+  it("reports token usage through onUsage", async () => {
+    const onUsage = vi.fn();
+    await harness
+      .makeClient(respondWith(() => harness.text(JSON.stringify({ answer: "hi" }))))
+      .generateStructured(request, { onUsage });
+
+    expect(onUsage).toHaveBeenCalledOnce();
+    expect(onUsage.mock.calls[0]![0]).toMatchObject({ inputTokens: 100, outputTokens: 50 });
+  });
+
+  it.each([
+    ["refused", () => harness.refusal()],
+    ["truncated", () => harness.truncated()],
+    ["schema-invalid", () => harness.text(JSON.stringify({ answer: 42 }))],
+  ])("still reports usage when the response is %s", async (_name, response) => {
+    const onUsage = vi.fn();
+    await failureOf(
+      harness.makeClient(respondWith(response)).generateStructured(request, { onUsage }),
+    );
+
+    expect(onUsage).toHaveBeenCalledOnce();
+  });
+
+  it("doesn't report usage when no response arrives", async () => {
+    const onUsage = vi.fn();
+    await failureOf(
+      harness
+        .makeClient(respondWith(() => harness.httpError("unavailable")))
+        .generateStructured(request, { onUsage }),
+    );
+
+    expect(onUsage).not.toHaveBeenCalled();
+  });
 
   it.each(Object.keys(AI_SCHEMAS) as AiSchemaName[])(
     "sends the %s schema and parses a valid response",
@@ -136,6 +172,7 @@ describe.each(["anthropic", "openai", "gemini"] as const)("LlmClient contract: %
     const error = await failureOf(harness.makeClient(hangingFetch, 50).generateStructured(request));
 
     expect(error.message).toBe(mapProviderError("timeout", harness.errorContext).message);
+    expect((error as ProviderError).kind).toBe("timeout");
     expect(error.cause).toBeUndefined();
   });
 });

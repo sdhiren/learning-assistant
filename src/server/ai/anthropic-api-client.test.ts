@@ -82,7 +82,8 @@ describe("AnthropicApiClient", () => {
     expect(body.output_config.format.schema.properties).toHaveProperty("answer");
   });
 
-  it("logs task, model, duration, stop reason and token usage, but not prompts or output", async () => {
+  it("reports input, output and both cache token counts, and logs no prompts or output", async () => {
+    const onUsage = vi.fn();
     await clientWith(
       respondWith(() =>
         sseMessage({
@@ -90,16 +91,14 @@ describe("AnthropicApiClient", () => {
           usage: { cache_read_input_tokens: 42, cache_creation_input_tokens: 7 },
         }),
       ),
-    ).generateStructured(request);
+    ).generateStructured(request, { onUsage });
 
-    const [, context] = vi.mocked(console.info).mock.calls.at(-1)!;
-    expect(context).toMatchObject({
-      task: "test-task",
-      model: "claude-opus-5-5",
-      stopReason: "end_turn",
-      usage: { input: 100, output: 50, cacheRead: 42, cacheWrite: 7 },
+    expect(onUsage).toHaveBeenCalledExactlyOnceWith({
+      inputTokens: 100,
+      outputTokens: 50,
+      cacheReadTokens: 42,
+      cacheWriteTokens: 7,
     });
-    expect(context).toHaveProperty("durationMs");
     const logged = JSON.stringify(vi.mocked(console.info).mock.calls);
     expect(logged).not.toContain("secret-output");
     expect(logged).not.toContain(request.prompt);

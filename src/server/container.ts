@@ -3,11 +3,13 @@ import "server-only";
 import { AnthropicApiClient } from "@/server/ai/anthropic-api-client";
 import { ClaudeAgentClient } from "@/server/ai/claude-agent-client";
 import { GeminiClient } from "@/server/ai/gemini-client";
+import { InstrumentedLlmClient } from "@/server/ai/instrumented-llm-client";
 import type { LlmClient } from "@/server/ai/llm-client";
 import { OpenAiClient } from "@/server/ai/openai-client";
 import { PROVIDERS, type ProviderId } from "@/server/ai/providers";
 import { getAiConfig, getEnv, type AiConfig } from "@/server/config/env";
 import { createDatabase, type AppDatabase } from "@/server/db/client";
+import { LlmCallRepository } from "@/server/repositories/llm-call-repository";
 import { QuizRepository } from "@/server/repositories/quiz-repository";
 import { ReadingRepository } from "@/server/repositories/reading-repository";
 import { TopicRepository } from "@/server/repositories/topic-repository";
@@ -17,6 +19,7 @@ import { QuizService } from "@/server/services/quiz-service";
 import { ReadingService } from "@/server/services/reading-service";
 import { SubtopicService } from "@/server/services/subtopic-service";
 import { TopicService } from "@/server/services/topic-service";
+import { UsageService } from "@/server/services/usage-service";
 
 /** The composition root: the only place concrete implementations are wired together. */
 export interface Services {
@@ -25,6 +28,7 @@ export interface Services {
   subtopics: SubtopicService;
   quizzes: QuizService;
   readings: ReadingService;
+  usage: UsageService;
 }
 
 // Only the database connection survives dev hot reloads; services are rebuilt
@@ -84,7 +88,13 @@ export function getAiProviderInfo(): AiProviderInfo {
 
 function createServices(): Services {
   const db = getDatabase();
-  const llm = createLlmClient(getAiConfig());
+  const aiConfig = getAiConfig();
+  const llmCallRepository = new LlmCallRepository(db);
+  const llm = new InstrumentedLlmClient(createLlmClient(aiConfig), {
+    provider: aiConfig.provider,
+    model: aiConfig.model,
+    sink: llmCallRepository,
+  });
 
   const topicRepository = new TopicRepository(db);
   const quizRepository = new QuizRepository(db);
@@ -97,6 +107,7 @@ function createServices(): Services {
     subtopics: new SubtopicService(topicRepository, progressService, llm),
     quizzes: new QuizService(topicRepository, quizRepository, progressService, llm),
     readings: new ReadingService(topicRepository, readingRepository, progressService, llm),
+    usage: new UsageService(llmCallRepository),
   };
 }
 

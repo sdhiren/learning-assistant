@@ -101,6 +101,13 @@ Nothing in progress.
 
 ## Done
 
+- **LA-4.** Every AI call is logged with tokens, cost and latency, and shown on a Usage page.
+  An `InstrumentedLlmClient` decorator writes one `llm_calls` row per call (outcome from a typed
+  `ProviderError.kind`; no prompts, answers or keys), logs are one JSON line per event with a
+  per-action `requestId` and `LOG_LEVEL`, and `/settings/usage` shows per-task failures and
+  p50/p95 latency plus monthly tokens and reported/estimated cost per provider. Migration `0004`
+  only creates `llm_calls` and its `started_at` index. PR link to follow.
+
 - Code-output answers are graded on understanding, not just exact text. A new instant rule gives
   80% for the right values with different line breaks. Answers no rule matches are judged by
   Claude (partial credit up to 90%, with an explanation of what differs) instead of scoring 0.
