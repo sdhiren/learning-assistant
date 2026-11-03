@@ -1,7 +1,9 @@
 # Design: Profiles with isolated data (B13)
 
-Status: **accepted, in progress** (LA-9; PRs 1–2 of 4: registry, per-profile container, sign-in and sessions) ·
-Backlog: [B13](../BACKLOG.md#b13-profiles-with-isolated-data--in-progress--l)
+Status: **accepted, done** (LA-9, four stacked PRs: registry and per-profile container; sign-in,
+sessions and encryption; profile page, per-profile AI settings and Sign in with Claude; topic
+suggestions) ·
+Backlog: [B13](../BACKLOG.md#done)
 
 > LA-9 extends this design: the existing data becomes profile `sdhiren` (not "Default"), profiles
 > sign in with a password instead of a switcher cookie, and each profile chooses its own AI
@@ -102,7 +104,23 @@ Mac), add an optional per-profile **PIN**:
 Anyone with access to the files on disk can still read the database. OS-level user accounts are
 the real boundary there.
 
-> **Decision needed:** is "separate" enough, or should profiles be PIN-locked?
+> **Decided (LA-9):** profiles are password-protected rather than PIN-locked. What was built:
+>
+> - **Passwords and sessions.** scrypt password hashes, a random session token in an httpOnly,
+>   SameSite=Lax cookie (only its SHA-256 is stored), 30 idle days, and a 5-failure lockout.
+> - **Envelope encryption.** Each profile has a random data key, wrapped by a scrypt key from the
+>   password and, per session, by a key derived from the raw session token. Saved API keys and
+>   pasted subscription tokens are AES-256-GCM ciphertext under it (AAD = profile id + kind).
+> - **Per-profile AI provider.** `profiles.ai_provider` / `ai_model` (null = env defaults), chosen
+>   on `/profile`.
+> - **Per-profile Claude config dir.** Sign in with Claude runs `claude auth login` with
+>   `CLAUDE_CONFIG_DIR=PROFILES_DIR/<id>/claude` (0700), and that profile's AI calls use the same
+>   dir. That credential is protected by the OS account, not the password (accepted trade-off).
+> - **Interests and suggestions.** Interests live in the registry; suggested topics are cached in
+>   each profile's own `topic_suggestions` table.
+>
+> The full security model and threat model are in
+> [ARCHITECTURE.md](../ARCHITECTURE.md#security-model).
 
 ## Testing
 

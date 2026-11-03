@@ -11,6 +11,13 @@ key instead (see [Choosing a provider](#choosing-a-provider)).
 
 ## Features (Phase 1)
 
+- **Profiles.** Everyone signs in with their own username and password and gets their own
+  topics, quizzes, progress, lessons and usage; profiles never see each other's data.
+- **Suggested topics.** The dashboard suggests topics from your interests straight away.
+  "Personalise" asks the AI for 5 to 8 suggestions tailored to your interests, target role and
+  experience, each with a reason. Start one in a click, or dismiss it.
+- **Your own AI choice.** On `/profile`, each person picks their Claude subscription (Sign in with
+  Claude, with their own claude.ai account) or an API key for Anthropic, OpenAI or Gemini.
 - **Topics with a skill map.** Claude designs a curriculum of 3 to 6 modules for any technical
   topic, with concepts ordered from fundamentals to advanced.
 - **Quizzes at four difficulty levels.** Easy, Medium, Hard and Expert, with 5 or 10
@@ -48,7 +55,7 @@ key instead (see [Choosing a provider](#choosing-a-provider)).
 
 **Requirements:** macOS or Linux, Node.js 22.12 or later, and
 [Claude Code](https://claude.com/claude-code) installed and logged in with your Claude account
-(run `claude` once and log in).
+(run `claude` once and log in). Windows isn't supported yet.
 
 ```bash
 make setup
@@ -65,7 +72,8 @@ progress and usage. Create one at <http://127.0.0.1:3000/register> (username, pa
 target role, experience and interests). If you used the app before profiles existed, your data
 is kept where it is as profile `sdhiren`: sign in with that username and you're asked to set a
 password once. Forgot a password? Run `make profile-password USER=<username>`. This deletes the
-profile's saved keys, because they're encrypted with the old password.
+profile's saved keys, because they're encrypted with the old password, and signs the profile out
+of Claude.
 
 `make setup` checks your Node.js version and Claude Code login, installs dependencies, creates
 `.env.local` and creates the database. You only need it once; after that, `make dev` is
@@ -105,6 +113,19 @@ All settings are optional. Copy `.env.example` to `.env.local` to change them.
   o-series); other models reject the reasoning effort the app sends.
 - **`gemini`:** set `AI_PROVIDER=gemini` and `GEMINI_API_KEY` (create a key in Google AI
   Studio). Uses `gemini-2.5-pro`.
+
+These variables are the defaults. Each profile can override them on `/profile` → AI settings,
+and the change applies to that profile's next AI call without a restart:
+
+- **Claude subscription:** **Sign in with Claude** shows a claude.ai link. Sign in with your own
+  account, paste back the code it shows, and that profile's requests bill your plan. The login
+  is kept in that profile's own Claude Code config dir (`data/profiles/<id>/claude`, mode 0700),
+  so this machine's own Claude Code login and other profiles are unaffected. A profile that
+  hasn't signed in uses this machine's Claude Code login, and the page says so. Pasting a token
+  from `claude setup-token` is a fallback.
+- **API key:** pick Anthropic, OpenAI or Gemini, an optional model and paste a key. Keys are
+  stored encrypted with a key only your password (or your live session) can unlock; the page
+  only ever shows "key ending ••••xxxx". With no saved key, the matching env var is used.
 
 Default models: `claude-opus-5-5` for `claude-code` and `anthropic`, `gpt-5` for `openai`,
 `gemini-2.5-pro` for `gemini`. The prompts were written for Claude; after changing provider or

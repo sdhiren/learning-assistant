@@ -4,7 +4,7 @@ Improvements we plan to make, picked up one at a time.
 
 **How to use it:**
 
-- New requirements go under **Requested** with the next free number (B15, B16, ...).
+- New requirements go under **Requested** with the next free number (B17, B18, ...).
 - Larger items get a design doc in `docs/design/`, linked from the item, with its open
   questions. An item is ready to build once its questions are answered.
 - When work starts, set the status to `in progress` and move a short summary to **In progress**.
@@ -14,23 +14,16 @@ Status: `todo` · `in progress` · `done`. Size: S (hours), M (a day), L (severa
 
 ## Requested
 
-### B13. Profiles with isolated data — `in progress` · L
+### B16. Windows support — `todo` · M
 
-Several profiles in one installation; two profiles never share topics, quizzes, answers, mastery,
-lessons or settings. Delivered by LA-9 as four stacked PRs.
+The app runs on macOS and Linux only. Supporting Windows needs:
 
-- **Design:** [docs/design/profiles.md](design/profiles.md). One SQLite file per profile, plus a
-  small profile registry. Isolation is structural, with no per-query filtering to get wrong.
-  Existing data becomes profile `sdhiren` in place.
-- **Done (PR 1):** registry (`data/app.db`, `drizzle-app/`), legacy-profile bootstrap,
-  per-profile composition root, and per-profile `make db-*` tooling.
-- **Done (PR 2):** registration at `/register`, password sign-in at `/login` (with the one-time
-  "Set your password" for `sdhiren`), hashed cookie sessions, the proxy redirect, the
-  encryption envelope (per-profile data key wrapped by password and by session), and
-  `make profile-password`.
-- **Next:** profile page,
-  per-profile AI settings and Sign in with Claude (PR 3); interest-based topic suggestions and
-  final docs (PR 4).
+- An equivalent of the 0700 modes on `data/profiles/<id>/` and the Claude config dirs (NTFS
+  ACLs limited to the current user).
+- Checking how Claude Code stores and isolates credentials under `CLAUDE_CONFIG_DIR` on Windows
+  (Credential Manager or a file), and whether `claude auth login` can be driven without a TTY.
+- Replacing the `make` and shell tooling (`make setup`, `db-*`, `profile-password`) with
+  cross-platform npm scripts.
 
 ### B14. Multiple AI providers (Anthropic API key first) — `in progress` · M
 
@@ -46,10 +39,12 @@ a provider registry so OpenAI and Gemini can follow (now done: LA-2).
 - **Stage 1b (LA-2):** `OpenAiClient` (Responses API, `gpt-5`) and `GeminiClient`
   (`@google/genai`, `gemini-2.5-pro`), a per-provider JSON schema adapter, a shared contract test
   suite and `make smoke-provider`. All four providers are available.
-- **Next:** the settings page that stores keys in the macOS Keychain (never in the database or
-  the browser).
-- **Open questions:** one key for the app or a key per profile (recommended, needs B13)? Which
-  cheaper model, if any, to offer with an API key? (Storage is resolved: env var first.)
+- **Stage 2 (done, LA-9 PR 3):** per-profile AI settings on `/profile`. Keys are stored only as
+  AES-256-GCM ciphertext under a per-profile data key wrapped by the user's password and by
+  their session (never in plaintext, and never sent to the browser); the env var is the
+  fallback. Subscription users can Sign in with Claude into a per-profile `CLAUDE_CONFIG_DIR`.
+- **Open questions:** which cheaper model, if any, to offer with an API key? (Storage and key
+  scope are resolved: env var first, then per-profile encrypted keys.)
 
 ## Proposed
 
@@ -108,6 +103,13 @@ Nothing in progress.
 
 ## Done
 
+- **B13 / LA-9.** Profiles with isolated data, in four stacked PRs. One SQLite file per profile
+  plus a registry (`data/app.db`); the pre-profiles database is profile `sdhiren`, registered in
+  place. Registration at `/register`, password sign-in with hashed cookie sessions and a
+  lockout, envelope-encrypted per-profile secrets, `make profile-password`. `/profile` edits
+  details and interests and chooses the AI provider per profile, including Sign in with Claude
+  into a per-profile `CLAUDE_CONFIG_DIR`. The dashboard suggests topics from interests (catalog
+  first, "Personalise" with the AI). Design: [docs/design/profiles.md](design/profiles.md).
 - **LA-4.** Every AI call is logged with tokens, cost and latency, and shown on a Usage page.
   An `InstrumentedLlmClient` decorator writes one `llm_calls` row per call (outcome from a typed
   `ProviderError.kind`; no prompts, answers or keys), logs are one JSON line per event with a
