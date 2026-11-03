@@ -1,5 +1,12 @@
 import { EXPERIENCE_LEVELS } from "@/domain/profile";
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import {
+  index,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 
 /**
  * The profile registry (`data/app.db`). It only knows which profiles exist and
@@ -35,6 +42,8 @@ export const profiles = sqliteTable(
     dekWrapped: text("dek_wrapped"),
     createdAt: timestamp("created_at").notNull(),
     lastLoginAt: timestamp("last_login_at"),
+    /** When this profile last completed Sign in with Claude (its own CLAUDE_CONFIG_DIR). */
+    claudeSignedInAt: timestamp("claude_signed_in_at"),
   },
   (table) => [uniqueIndex("profiles_username_key_unique").on(table.usernameKey)],
 );
@@ -59,3 +68,26 @@ export const sessions = sqliteTable(
 );
 
 export type SessionRow = typeof sessions.$inferSelect;
+
+/**
+ * Secrets a profile saved in the UI (API keys, a pasted subscription token),
+ * sealed with AES-256-GCM under the profile's data key with AAD
+ * `${profileId}:${kind}`. `hint` is the last 4 characters, for display only.
+ */
+export const profileSecrets = sqliteTable(
+  "profile_secrets",
+  {
+    profileId: text("profile_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    ciphertext: text("ciphertext").notNull(),
+    iv: text("iv").notNull(),
+    tag: text("tag").notNull(),
+    hint: text("hint").notNull(),
+    updatedAt: timestamp("updated_at").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.profileId, table.kind] })],
+);
+
+export type ProfileSecretRow = typeof profileSecrets.$inferSelect;

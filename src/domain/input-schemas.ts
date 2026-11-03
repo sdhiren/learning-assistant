@@ -228,6 +228,62 @@ export const changePasswordInput = z
   .superRefine(withConfirmation);
 export type ChangePasswordInput = z.infer<typeof changePasswordInput>;
 
+export const updateProfileInput = z.object({
+  firstName: requiredName("first name"),
+  lastName: requiredName("last name"),
+  targetRole: singleLineText(TARGET_ROLE_MAX_LENGTH).optional().default(""),
+  experienceLevel: z.enum(EXPERIENCE_LEVELS, { message: "Choose your experience level." }),
+  interests,
+});
+export type UpdateProfileInput = z.infer<typeof updateProfileInput>;
+
+/** Mirrors `PROVIDER_IDS` in src/server/ai/providers.ts (domain can't import the server). */
+export const AI_PROVIDER_CHOICES = ["claude-code", "anthropic", "openai", "gemini"] as const;
+export const SECRET_KIND_CHOICES = [
+  "api_key:anthropic",
+  "api_key:openai",
+  "api_key:gemini",
+  "claude_oauth_token",
+] as const;
+export const AI_MODEL_MAX_LENGTH = 80;
+export const SECRET_MAX_LENGTH = 512;
+
+/** A pasted key or token. Error messages never echo the value. */
+const secretValue = z
+  .string()
+  .trim()
+  .max(SECRET_MAX_LENGTH, "That's too long for a key.")
+  .regex(/^\S*$/, "Keys don't contain spaces.");
+
+export const aiSettingsInput = z.object({
+  provider: z.enum(AI_PROVIDER_CHOICES, { message: "Choose a provider." }),
+  model: z
+    .string()
+    .trim()
+    .max(AI_MODEL_MAX_LENGTH)
+    .regex(/^[A-Za-z0-9._:/@-]*$/, "Model ids use letters, digits and . _ : / @ -")
+    .optional()
+    .default(""),
+  apiKey: secretValue.optional().default(""),
+});
+export type AiSettingsInput = z.infer<typeof aiSettingsInput>;
+
+export const claudeTokenInput = z.object({
+  token: secretValue.pipe(z.string().min(1, "Paste the token.")),
+});
+
+export const claudeSignInCodeInput = z.object({
+  flowId: id,
+  code: z
+    .string()
+    .trim()
+    .min(1, "Paste the code.")
+    .max(SECRET_MAX_LENGTH, "That code is too long.")
+    .regex(/^\S+$/, "Codes don't contain spaces."),
+});
+
+export const removeSecretInput = z.object({ kind: z.enum(SECRET_KIND_CHOICES) });
+
 /**
  * Where to go after signing in. Only same-site paths are allowed: a value
  * like `//evil.example` or `https://…` would make sign-in an open redirect.

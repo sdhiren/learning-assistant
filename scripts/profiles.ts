@@ -18,6 +18,10 @@ import { createDatabase } from "@/server/db/client";
 import { ProfileRepository } from "@/server/repositories/profile-repository";
 import { ensureLegacyProfile } from "@/server/registry-bootstrap";
 import { AuthService } from "@/server/services/auth-service";
+import { ProfileService } from "@/server/services/profile-service";
+import { SecretService } from "@/server/services/secret-service";
+import { ClaudeLoginFlow } from "@/server/ai/claude-login";
+import { claudeConfigDirFor } from "@/server/ai/profile-ai-config";
 
 function fail(message: string): never {
   console.error(`✗ ${message}`);
@@ -58,7 +62,11 @@ function promptHidden(question: string): Promise<string> {
   });
 }
 
-async function resetPassword(auth: AuthService, username: string): Promise<void> {
+async function resetPassword(
+  auth: AuthService,
+  settings: ProfileService,
+  username: string,
+): Promise<void> {
   const password = await promptHidden(`New password for ${username}: `);
   const parsed = passwordSchema.safeParse(password);
   if (!parsed.success) fail(parsed.error.issues[0]?.message ?? "Invalid password.");
@@ -68,9 +76,14 @@ async function resetPassword(auth: AuthService, username: string): Promise<void>
 
   const profile = await auth.resetPassword(username, password);
   console.log(`✓ Password of ${profile.username} reset. Every session was signed out.`);
+  const { secretsDeleted } = await settings.forgetCredentials(profile.id);
   console.log(
-    "! Saved API keys and tokens of this profile (if any) were deleted: they can't be " +
+    `! Deleted ${secretsDeleted} saved API key(s)/token(s) of this profile: they can't be ` +
       "decrypted without the old password. Add them again on the profile page.",
+  );
+  console.log(
+    "! Signed this profile out of Claude (claude auth logout, config dir removed). " +
+      "Sign in again on the profile page.",
   );
 }
 
@@ -109,7 +122,15 @@ async function main(): Promise<void> {
         profilesDir: env.PROFILES_DIR,
         initDatabase: (filePath) => createDatabase(filePath).$client.close(),
       });
-      await resetPassword(auth, argument);
+      const settings = new ProfileService(
+        registry,
+        new SecretService(registry),
+        new ClaudeLoginFlow({
+          cliPath: env.CLAUDE_CLI_PATH,
+          configDirFor: (profileId) => claudeConfigDirFor(env.PROFILES_DIR, profileId),
+        }),
+      );
+      await resetPassword(auth, settings, argument);
       return;
     }
     default:

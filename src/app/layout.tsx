@@ -27,8 +27,8 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   // The provider comes from the server's env at request time, not from `next build`.
   await connection();
-  const { label, usageNote } = getAiProviderInfo();
   const profile = await getCurrentProfile();
+  const { label, usageNote } = getAiProviderInfo(profile ?? undefined);
 
   return (
     // The inline script sets data-theme before paint, so React must accept it.
@@ -65,6 +65,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                   <span className="hidden text-sm font-medium sm:inline" title={profile.username}>
                     {profile.firstName} {profile.lastName}
                   </span>
+                  <Link
+                    href="/profile"
+                    className="rounded-md px-2 py-1 text-sm text-muted transition-colors hover:text-ink"
+                  >
+                    Profile
+                  </Link>
                   <Link
                     href="/settings/usage"
                     className="rounded-md px-2 py-1 text-sm text-muted transition-colors hover:text-ink"

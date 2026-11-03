@@ -20,6 +20,9 @@ import { toProviderJsonSchema } from "./schema-adapter";
 interface ClaudeAgentClientOptions {
   model: string;
   timeoutMs: number;
+  auth?: ClaudeProfileAuth;
+  /** The `claude` binary Sign in with Claude used; queries use it when signed in. */
+  cliPath?: string;
 }
 
 const CLIENT_APP_ID = "learning-assistant/0.1.0";
@@ -88,7 +91,11 @@ export class ClaudeAgentClient implements LlmClient {
         maxTurns: 3,
         cwd: this.getSandboxDir(),
         abortController,
-        env: buildAgentEnv(),
+        env: buildAgentEnv(process.env, this.options.auth),
+        // Same binary as Sign in with Claude, so both agree on where the login lives.
+        ...(this.options.auth?.configDir && this.options.cliPath
+          ? { pathToClaudeCodeExecutable: this.options.cliPath }
+          : {}),
       },
     });
 
@@ -189,13 +196,24 @@ function toUsage(result: SDKResultMessage): LlmUsage {
   };
 }
 
+/** How a profile authenticates to its subscription. Neither set: this machine's login. */
+export interface ClaudeProfileAuth {
+  /** The profile's own CLAUDE_CONFIG_DIR, written by Sign in with Claude. */
+  configDir?: string;
+  /** A pasted `claude setup-token` token. */
+  oauthToken?: string;
+}
+
 /**
  * The environment for the Claude Code subprocess. API credentials are removed
  * so a stray ANTHROPIC_API_KEY in the shell can't silently switch the
- * subscription path to API billing.
+ * subscription path to API billing. When the profile has its own login, an
+ * inherited CLAUDE_CODE_OAUTH_TOKEN is removed too, because it would override
+ * the profile's config dir and bill someone else.
  */
 export function buildAgentEnv(
   source: Record<string, string | undefined> = process.env,
+  auth: ClaudeProfileAuth = {},
 ): Record<string, string | undefined> {
   const env: Record<string, string | undefined> = {
     ...source,
@@ -203,5 +221,8 @@ export function buildAgentEnv(
   };
   delete env.ANTHROPIC_API_KEY;
   delete env.ANTHROPIC_AUTH_TOKEN;
+  if (auth.configDir || auth.oauthToken) delete env.CLAUDE_CODE_OAUTH_TOKEN;
+  if (auth.configDir) env.CLAUDE_CONFIG_DIR = auth.configDir;
+  else if (auth.oauthToken) env.CLAUDE_CODE_OAUTH_TOKEN = auth.oauthToken;
   return env;
 }

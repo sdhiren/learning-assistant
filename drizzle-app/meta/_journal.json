@@ -15,6 +15,20 @@
       "when": 1793723300896,
       "tag": "0001_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793724842323,
+      "tag": "0002_profile_secrets",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1793724846453,
+      "tag": "0003_profile_claude_login",
+      "breakpoints": true
     }
   ]
 }

@@ -244,7 +244,22 @@ encryption with `node:crypto` only (`server/crypto/secret-box.ts`):
 - Each request unwraps the DEK from its session (`resolveSession`). It lives only in memory.
 - Changing the password re-wraps the same DEK, so saved secrets are kept. A forgotten-password
   reset (`make profile-password`) can't recover the old DEK: it makes a new one, signs out every
-  session, deletes the profile's saved secrets and says so.
+  session, deletes the profile's saved secrets, signs the profile out of Claude
+  (`claude auth logout`, then deletes its config dir) and says so.
+- `SecretService` (`server/services/secret-service.ts`) seals and opens rows in
+  `profile_secrets`. Kinds are `api_key:anthropic|openai|gemini` and `claude_oauth_token`.
+  Only the ciphertext, IV, tag and a 4-character `hint` are stored, and the UI only gets the
+  hint. Decrypted values exist only in the profile's cached services graph.
+
+### Per-profile AI provider
+
+`resolveProfileAiConfig` (`server/ai/profile-ai-config.ts`) runs on every request with the
+session's DEK. The profile's `ai_provider`/`ai_model` win, and null means the env defaults. A
+saved key wins over the env key. For the subscription the order is the profile's own
+`CLAUDE_CONFIG_DIR` (after Sign in with Claude), then a pasted token, then the machine's Claude
+Code login. The container caches services per profile, keyed by a hash of provider, model and
+credential, so a settings change applies on the next call without a restart. See
+[design/ai-providers.md](design/ai-providers.md) for the Sign in with Claude flow.
 
 ### Threat model
 
@@ -256,6 +271,15 @@ encryption with `node:crypto` only (`server/crypto/secret-box.ts`):
 | `data/app.db` **and** a live session cookie | Can read your saved secrets. Both live under your OS account, which is the real boundary.                   |
 | Your OS account (or root)                   | Everything: profile databases are plain SQLite files. OS accounts protect files; passwords separate people. |
 | Physical access while the server runs       | Decrypted secrets sit in the server's memory while your profile's services are cached.                      |
+| Your OS account, for the Claude sign-in     | Can use your Claude login: see below.                                                                       |
+
+**Accepted trade-off (owner, 2026-11-02):** the credential from Sign in with Claude is held by
+Claude Code itself in the profile's 0700 config dir, `PROFILES_DIR/<id>/claude`. On Linux it's a
+plaintext `.credentials.json`, and on macOS it's a Keychain entry for that config dir. It is
+protected by the OS account, **not** by the profile password, because Claude Code rewrites it
+on every refresh and it can't be wrapped in our envelope. API keys and pasted tokens keep full
+envelope encryption. People normally run the app under their own OS account on their own
+computer, which is where this holds.
 
 Profile passwords separate the people using one app. They don't protect the files on disk from
 someone who can log in to your OS account: use your OS account (and disk encryption) for that.
@@ -264,7 +288,13 @@ someone who can log in to your OS account: use your OS account (and disk encrypt
 
 ```text
 profiles 1─* sessions               (registry: data/app.db)
+profiles 1─* profile_secrets
 ```
+
+`profile_secrets` (migration 0002) has primary key (`profile_id`, `kind`), with `profile_id`
+cascading, plus `ciphertext`, `iv`, `tag`, `hint` and `updated_at`. `profiles.claude_signed_in_at`
+(migration 0003, `ALTER TABLE ADD`) records when the profile last completed Sign in with
+Claude.
 
 `sessions` holds `token_hash` (SHA-256 of the cookie's token, primary key), `profile_id`
 (cascade), `dek_wrapped` (the profile's data key wrapped for this session), `created_at` and

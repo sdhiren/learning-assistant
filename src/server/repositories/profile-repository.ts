@@ -58,4 +58,23 @@ export class ProfileRepository {
   recordLogin(id: string, at: Date): void {
     this.db.update(profiles).set({ lastLoginAt: at }).where(eq(profiles.id, id)).run();
   }
+
+  updateDetails(
+    id: string,
+    details: Pick<
+      ProfileRow,
+      "firstName" | "lastName" | "targetRole" | "experienceLevel" | "interests"
+    >,
+  ): void {
+    this.db.update(profiles).set(details).where(eq(profiles.id, id)).run();
+  }
+
+  /** Null provider and model mean "use the env defaults". */
+  setAiSettings(id: string, aiProvider: string | null, aiModel: string | null): void {
+    this.db.update(profiles).set({ aiProvider, aiModel }).where(eq(profiles.id, id)).run();
+  }
+
+  setClaudeSignedInAt(id: string, at: Date | null): void {
+    this.db.update(profiles).set({ claudeSignedInAt: at }).where(eq(profiles.id, id)).run();
+  }
 }

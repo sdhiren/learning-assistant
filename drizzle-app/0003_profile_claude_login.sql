@@ -1,0 +1,1 @@
+ALTER TABLE `profiles` ADD `claude_signed_in_at` integer;
