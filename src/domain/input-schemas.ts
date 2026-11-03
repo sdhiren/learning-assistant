@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { DIFFICULTIES } from "./difficulty";
+import { EXPERIENCE_LEVELS } from "./profile";
 import type { QuestionType } from "./question";
 
 /** Validation for everything a user can submit. Shared by server actions and forms. */
@@ -129,4 +130,110 @@ export const finishQuizInput = z.object({ quizId: id });
 /** The longest answer accepted for a question type. */
 export function maxAnswerLength(type: QuestionType): number {
   return type === "coding_challenge" ? CODE_ANSWER_MAX_LENGTH : ANSWER_MAX_LENGTH;
+}
+
+// --- Profiles and sign-in ----------------------------------------------------
+
+export const USERNAME_MIN_LENGTH = 3;
+export const USERNAME_MAX_LENGTH = 32;
+export const PASSWORD_MIN_LENGTH = 10;
+export const PASSWORD_MAX_LENGTH = 128;
+export const NAME_MAX_LENGTH = 50;
+export const TARGET_ROLE_MAX_LENGTH = 80;
+export const INTEREST_MAX_LENGTH = 40;
+export const MAX_INTERESTS = 10;
+
+/** Usernames are unique ignoring case; the registry compares their lower-cased form. */
+export const username = z
+  .string({ message: "Enter a username." })
+  .trim()
+  .min(USERNAME_MIN_LENGTH, `Usernames are at least ${USERNAME_MIN_LENGTH} characters.`)
+  .max(USERNAME_MAX_LENGTH, `Usernames are at most ${USERNAME_MAX_LENGTH} characters.`)
+  .regex(/^[a-zA-Z0-9_.-]+$/, "Use letters, digits, dots, dashes or underscores.");
+
+/** Passwords are never trimmed: every character counts. */
+export const password = z
+  .string({ message: "Enter a password." })
+  .min(PASSWORD_MIN_LENGTH, `Passwords are at least ${PASSWORD_MIN_LENGTH} characters.`)
+  .max(PASSWORD_MAX_LENGTH, `Passwords are at most ${PASSWORD_MAX_LENGTH} characters.`);
+
+const requiredName = (label: string) =>
+  singleLineText(NAME_MAX_LENGTH).pipe(z.string().min(1, `Enter your ${label}.`));
+
+/** 1–10 interests, each a short single line, deduplicated ignoring case. */
+export const interests = z
+  .array(singleLineText(INTEREST_MAX_LENGTH))
+  .transform((values) => {
+    const seen = new Set<string>();
+    return values.filter((value) => {
+      const key = value.toLowerCase();
+      if (!value || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  })
+  .pipe(
+    z
+      .array(z.string())
+      .min(1, "Pick at least one interest.")
+      .max(MAX_INTERESTS, `Pick at most ${MAX_INTERESTS} interests.`),
+  );
+
+/** A password typed twice; the error lands on `confirmPassword`. */
+const withConfirmation = <T extends { password: string; confirmPassword: string }>(
+  value: T,
+  context: z.RefinementCtx,
+) => {
+  if (value.password !== value.confirmPassword) {
+    context.addIssue({
+      code: "custom",
+      path: ["confirmPassword"],
+      message: "The passwords don't match.",
+    });
+  }
+};
+
+export const registerInput = z
+  .object({
+    username,
+    password,
+    confirmPassword: z.string(),
+    firstName: requiredName("first name"),
+    lastName: requiredName("last name"),
+    targetRole: singleLineText(TARGET_ROLE_MAX_LENGTH).optional().default(""),
+    experienceLevel: z.enum(EXPERIENCE_LEVELS, { message: "Choose your experience level." }),
+    interests,
+  })
+  .superRefine(withConfirmation);
+export type RegisterInput = z.infer<typeof registerInput>;
+
+/** Sign-in only checks presence: the rules for new passwords don't apply to old ones. */
+export const loginInput = z.object({
+  username: z.string().trim().min(1, "Enter your username.").max(USERNAME_MAX_LENGTH),
+  password: z.string().max(PASSWORD_MAX_LENGTH),
+});
+export type LoginInput = z.infer<typeof loginInput>;
+
+export const setInitialPasswordInput = z
+  .object({ username, password, confirmPassword: z.string() })
+  .superRefine(withConfirmation);
+export type SetInitialPasswordInput = z.infer<typeof setInitialPasswordInput>;
+
+export const changePasswordInput = z
+  .object({
+    currentPassword: z.string().min(1, "Enter your current password.").max(PASSWORD_MAX_LENGTH),
+    password,
+    confirmPassword: z.string(),
+  })
+  .superRefine(withConfirmation);
+export type ChangePasswordInput = z.infer<typeof changePasswordInput>;
+
+/**
+ * Where to go after signing in. Only same-site paths are allowed: a value
+ * like `//evil.example` or `https://…` would make sign-in an open redirect.
+ */
+export function safeNextPath(value: unknown): string {
+  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) return "/";
+  if (value.includes("\\") || CONTROL_CHARACTERS.test(value)) return "/";
+  return value;
 }

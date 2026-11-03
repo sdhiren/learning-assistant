@@ -1,13 +1,11 @@
-import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { EXPERIENCE_LEVELS } from "@/domain/profile";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 /**
  * The profile registry (`data/app.db`). It only knows which profiles exist and
  * where each one's learning database lives; learning data never goes here.
  * Migrations for this schema live in `drizzle-app/`, separate from `drizzle/`.
  */
-
-export const EXPERIENCE_LEVELS = ["junior", "mid", "senior", "staff"] as const;
-export type ExperienceLevel = (typeof EXPERIENCE_LEVELS)[number];
 
 const timestamp = (name: string) => integer(name, { mode: "timestamp_ms" });
 
@@ -42,3 +40,22 @@ export const profiles = sqliteTable(
 );
 
 export type ProfileRow = typeof profiles.$inferSelect;
+
+export const sessions = sqliteTable(
+  "sessions",
+  {
+    /** SHA-256 of the session token. The raw token lives only in the browser's cookie. */
+    tokenHash: text("token_hash").primaryKey(),
+    profileId: text("profile_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    /** The profile's data key, wrapped by a key derived from the raw session token. */
+    dekWrapped: text("dek_wrapped").notNull(),
+    createdAt: timestamp("created_at").notNull(),
+    /** Slides forward on each use, so a session lasts 30 idle days. */
+    expiresAt: timestamp("expires_at").notNull(),
+  },
+  (table) => [index("sessions_profile_id_idx").on(table.profileId)],
+);
+
+export type SessionRow = typeof sessions.$inferSelect;
