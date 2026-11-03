@@ -5,14 +5,14 @@ import { Card } from "@/components/ui/card";
 import { ProviderUsageCards } from "@/components/usage/provider-usage-cards";
 import { TaskUsageTable } from "@/components/usage/task-usage-table";
 import { getAiProviderInfo } from "@/server/container";
-import { getProfileServices } from "@/server/session";
+import { getProfileServices, requireProfile } from "@/server/session";
 
 export const metadata: Metadata = { title: "Usage" };
 
 export default async function UsagePage() {
   await connection();
   const usage = (await getProfileServices()).usage.getUsage();
-  const ai = getAiProviderInfo();
+  const ai = getAiProviderInfo(await requireProfile());
   const month = usage.monthStart.toLocaleDateString("en", { month: "long", year: "numeric" });
 
   return (

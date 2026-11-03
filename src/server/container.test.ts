@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { AnthropicApiClient } from "@/server/ai/anthropic-api-client";
 import { ClaudeAgentClient } from "@/server/ai/claude-agent-client";
 import { GeminiClient } from "@/server/ai/gemini-client";
+import { MissingKeyLlmClient } from "@/server/ai/missing-key-llm-client";
 import { OpenAiClient } from "@/server/ai/openai-client";
 
 import { createLlmClient } from "./container";
@@ -39,13 +40,10 @@ describe("createLlmClient", () => {
     expect(client.providerLabel).toBe("Gemini");
   });
 
-  it.each([
-    ["anthropic", "ANTHROPIC_API_KEY"],
-    ["openai", "OPENAI_API_KEY"],
-    ["gemini", "GEMINI_API_KEY"],
-  ] as const)("refuses %s without a key", (provider, keyEnvVar) => {
-    expect(() => createLlmClient({ ...base, provider })).toThrow(
-      `AI_PROVIDER=${provider} needs ${keyEnvVar}`,
-    );
-  });
+  it.each(["anthropic", "openai", "gemini"] as const)(
+    "asks for a %s key on first use instead of failing at startup",
+    (provider) => {
+      expect(createLlmClient({ ...base, provider })).toBeInstanceOf(MissingKeyLlmClient);
+    },
+  );
 });

@@ -30,6 +30,12 @@ export async function getCurrentProfile(): Promise<ProfileRow | null> {
  * action (other than sign-in and registration) must go through this: the
  * proxy's redirect is only an optimistic check of whether a cookie exists.
  */
+export async function requireSession(): Promise<ResolvedSession> {
+  const session = await getCurrentSession();
+  if (!session) redirect(LOGIN_PATH);
+  return session;
+}
+
 export async function requireProfile(): Promise<ProfileRow> {
   const profile = await getCurrentProfile();
   if (!profile) redirect(LOGIN_PATH);
@@ -42,7 +48,8 @@ export async function requireProfile(): Promise<ProfileRow> {
  * the profile that started it.
  */
 export async function getProfileServices(): Promise<Services> {
-  return getContainer().servicesFor(await requireProfile());
+  const session = await requireSession();
+  return getContainer().servicesFor(session.profile, session.dek);
 }
 
 /** Sets the session cookie. Only callable from server actions and route handlers. */

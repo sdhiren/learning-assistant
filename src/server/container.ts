@@ -1,11 +1,21 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import { AnthropicApiClient } from "@/server/ai/anthropic-api-client";
 import { ClaudeAgentClient } from "@/server/ai/claude-agent-client";
+import { ClaudeLoginFlow } from "@/server/ai/claude-login";
 import { GeminiClient } from "@/server/ai/gemini-client";
 import { InstrumentedLlmClient } from "@/server/ai/instrumented-llm-client";
 import type { LlmClient } from "@/server/ai/llm-client";
+import { MissingKeyLlmClient } from "@/server/ai/missing-key-llm-client";
 import { OpenAiClient } from "@/server/ai/openai-client";
+import {
+  claudeConfigDirFor,
+  profileProvider,
+  resolveProfileAiConfig,
+  type ProfileAiFields,
+} from "@/server/ai/profile-ai-config";
 import { PROVIDERS, type ProviderId } from "@/server/ai/providers";
 import { getAiConfig, getEnv, type AiConfig } from "@/server/config/env";
 import { createRegistryDatabase, type RegistryDatabase } from "@/server/db/app-client";
@@ -22,6 +32,8 @@ import { ReadingService } from "@/server/services/reading-service";
 import { SubtopicService } from "@/server/services/subtopic-service";
 import { TopicService } from "@/server/services/topic-service";
 import { AuthService } from "@/server/services/auth-service";
+import { ProfileService } from "@/server/services/profile-service";
+import { SecretService } from "@/server/services/secret-service";
 import { UsageService } from "@/server/services/usage-service";
 
 /** The composition root: the only place concrete implementations are wired together. */
@@ -38,23 +50,28 @@ export interface Services {
 export function createLlmClient(config: AiConfig): LlmClient {
   switch (config.provider) {
     case "claude-code":
-      return new ClaudeAgentClient({ model: config.model, timeoutMs: config.timeoutMs });
+      return new ClaudeAgentClient({
+        model: config.model,
+        timeoutMs: config.timeoutMs,
+        auth: { configDir: config.claudeConfigDir, oauthToken: config.oauthToken },
+        cliPath: getEnv().CLAUDE_CLI_PATH,
+      });
     case "anthropic":
-      if (!config.apiKey) throw new Error("AI_PROVIDER=anthropic needs ANTHROPIC_API_KEY");
+      if (!config.apiKey) return new MissingKeyLlmClient(config.provider);
       return new AnthropicApiClient({
         apiKey: config.apiKey,
         model: config.model,
         timeoutMs: config.timeoutMs,
       });
     case "openai":
-      if (!config.apiKey) throw new Error("AI_PROVIDER=openai needs OPENAI_API_KEY");
+      if (!config.apiKey) return new MissingKeyLlmClient(config.provider);
       return new OpenAiClient({
         apiKey: config.apiKey,
         model: config.model,
         timeoutMs: config.timeoutMs,
       });
     case "gemini":
-      if (!config.apiKey) throw new Error("AI_PROVIDER=gemini needs GEMINI_API_KEY");
+      if (!config.apiKey) return new MissingKeyLlmClient(config.provider);
       return new GeminiClient({
         apiKey: config.apiKey,
         model: config.model,
@@ -74,24 +91,22 @@ export interface AiProviderInfo {
 }
 
 /** The active provider's display data for the UI. Plain, serializable, and never the key. */
-export function getAiProviderInfo(): AiProviderInfo {
-  const { provider } = getAiConfig();
+/** The provider a profile uses (its own choice, else the env default). */
+export function getAiProviderInfo(profile?: Pick<ProfileAiFields, "aiProvider">): AiProviderInfo {
+  const provider = profile ? profileProvider(profile, getEnv()) : getAiConfig().provider;
   const { label, usageNote } = PROVIDERS[provider];
   return { id: provider, label, usageNote };
 }
 
 /** What the container needs to know about a profile. */
-export interface ProfileRef {
-  id: string;
-  dbPath: string;
-}
+export type ProfileRef = { id: string; dbPath: string } & Partial<Omit<ProfileAiFields, "id">>;
 
 export interface ProfileContainerOptions {
   /** Open connections by profile id. Pass a long-lived map so connections survive hot reloads. */
   databases?: Map<string, AppDatabase>;
   openDatabase?: (filePath: string) => AppDatabase;
   createLlm?: (config: AiConfig) => LlmClient;
-  aiConfig?: (profile: ProfileRef) => AiConfig;
+  aiConfig?: (profile: ProfileRef, dek?: Buffer) => AiConfig;
 }
 
 /**
@@ -105,7 +120,7 @@ export class ProfileContainer {
   private readonly services = new Map<string, { fingerprint: string; services: Services }>();
   private readonly openDatabase: (filePath: string) => AppDatabase;
   private readonly createLlm: (config: AiConfig) => LlmClient;
-  private readonly aiConfig: (profile: ProfileRef) => AiConfig;
+  private readonly aiConfig: (profile: ProfileRef, dek?: Buffer) => AiConfig;
 
   constructor(options: ProfileContainerOptions = {}) {
     this.databases = options.databases ?? new Map();
@@ -114,9 +129,10 @@ export class ProfileContainer {
     this.aiConfig = options.aiConfig ?? (() => getAiConfig());
   }
 
-  servicesFor(profile: ProfileRef): Services {
-    const aiConfig = this.aiConfig(profile);
-    const fingerprint = `${aiConfig.provider}:${aiConfig.model}`;
+  /** `dek` unlocks the profile's saved keys; without it only env keys apply. */
+  servicesFor(profile: ProfileRef, dek?: Buffer): Services {
+    const aiConfig = this.aiConfig(profile, dek);
+    const fingerprint = fingerprintOf(aiConfig);
     const cached = this.services.get(profile.id);
     if (cached?.fingerprint === fingerprint) return cached.services;
 
@@ -165,10 +181,19 @@ export class ProfileContainer {
 
 // Only database connections survive dev hot reloads; services are rebuilt
 // from the current module code so edits take effect without a restart.
+/** Changes whenever the provider, model or credential changes; holds no secret itself. */
+function fingerprintOf(config: AiConfig): string {
+  const credential = createHash("sha256")
+    .update([config.apiKey, config.oauthToken, config.claudeConfigDir].join("\0"))
+    .digest("hex");
+  return `${config.provider}:${config.model}:${credential}`;
+}
+
 const globalForDb = globalThis as typeof globalThis & {
   __learningAssistantRegistry?: RegistryDatabase;
   __learningAssistantDbs?: Map<string, AppDatabase>;
   __learningAssistantAuth?: AuthService;
+  __learningAssistantClaudeLogin?: ClaudeLoginFlow;
 };
 
 /** The profile registry, opened and migrated once. Registers the legacy database on first start. */
@@ -194,11 +219,39 @@ export function getAuth(): AuthService {
   return globalForDb.__learningAssistantAuth;
 }
 
+export function getSecrets(): SecretService {
+  return new SecretService(getRegistry());
+}
+
+/** Pending Sign in with Claude flows live in memory, so this must be a singleton. */
+export function getClaudeLogin(): ClaudeLoginFlow {
+  globalForDb.__learningAssistantClaudeLogin ??= new ClaudeLoginFlow({
+    cliPath: getEnv().CLAUDE_CLI_PATH,
+    configDirFor: (profileId) => claudeConfigDirFor(getEnv().PROFILES_DIR, profileId),
+  });
+  return globalForDb.__learningAssistantClaudeLogin;
+}
+
+export function getProfileSettings(): ProfileService {
+  return new ProfileService(getRegistry(), getSecrets(), getClaudeLogin());
+}
+
 let container: ProfileContainer | undefined;
 
 export function getContainer(): ProfileContainer {
   container ??= new ProfileContainer({
     databases: (globalForDb.__learningAssistantDbs ??= new Map()),
+    aiConfig: (profile, dek) =>
+      resolveProfileAiConfig(
+        {
+          id: profile.id,
+          aiProvider: profile.aiProvider ?? null,
+          aiModel: profile.aiModel ?? null,
+          claudeSignedInAt: profile.claudeSignedInAt ?? null,
+        },
+        getEnv(),
+        dek ? getSecrets().loadDecrypted(profile.id, dek) : {},
+      ),
   });
   return container;
 }

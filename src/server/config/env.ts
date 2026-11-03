@@ -23,6 +23,8 @@ const envSchema = z
     REGISTRY_PATH: z.string().min(1).default("./data/app.db"),
     /** New profiles get `PROFILES_DIR/<id>/learning-assistant.db`. */
     PROFILES_DIR: z.string().min(1).default("./data/profiles"),
+    /** The Claude Code CLI used for Sign in with Claude (and for signed-in profiles' queries). */
+    CLAUDE_CLI_PATH: z.string().min(1).default("claude"),
     /** Default provider for profiles that haven't chosen one. */
     AI_PROVIDER: z.enum(PROVIDER_IDS).default("claude-code"),
     AI_MODEL: modelId("AI_MODEL").optional(),
@@ -68,6 +70,10 @@ export interface AiConfig {
   /** Only set for providers that need a key. Never log or return this to the browser. */
   apiKey?: string;
   timeoutMs: number;
+  /** claude-code only: the profile's own Claude config dir after Sign in with Claude. */
+  claudeConfigDir?: string;
+  /** claude-code only: a pasted `claude setup-token` token. Never log or return this. */
+  oauthToken?: string;
 }
 
 let cachedEnv: Env | undefined;
