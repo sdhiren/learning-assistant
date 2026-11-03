@@ -4,13 +4,14 @@ import { connection } from "next/server";
 import { Card } from "@/components/ui/card";
 import { ProviderUsageCards } from "@/components/usage/provider-usage-cards";
 import { TaskUsageTable } from "@/components/usage/task-usage-table";
-import { getAiProviderInfo, getServices } from "@/server/container";
+import { getAiProviderInfo } from "@/server/container";
+import { getProfileServices } from "@/server/session";
 
 export const metadata: Metadata = { title: "Usage" };
 
 export default async function UsagePage() {
   await connection();
-  const usage = getServices().usage.getUsage();
+  const usage = (await getProfileServices()).usage.getUsage();
   const ai = getAiProviderInfo();
   const month = usage.monthStart.toLocaleDateString("en", { month: "long", year: "numeric" });
 

@@ -17,7 +17,13 @@ const optionalKey = z.string().trim().min(1).optional();
 
 const envSchema = z
   .object({
+    /** The pre-profiles database. If it exists on first start, it becomes profile `sdhiren`. */
     DATABASE_PATH: z.string().min(1).default("./data/learning-assistant.db"),
+    /** The profile registry (profiles, and later sessions and secrets). */
+    REGISTRY_PATH: z.string().min(1).default("./data/app.db"),
+    /** New profiles get `PROFILES_DIR/<id>/learning-assistant.db`. */
+    PROFILES_DIR: z.string().min(1).default("./data/profiles"),
+    /** Default provider for profiles that haven't chosen one. */
     AI_PROVIDER: z.enum(PROVIDER_IDS).default("claude-code"),
     AI_MODEL: modelId("AI_MODEL").optional(),
     /** Deprecated alias for AI_MODEL, honoured for the Claude providers only. */

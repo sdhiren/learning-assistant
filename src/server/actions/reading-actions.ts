@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 
 import type { ActionResult } from "@/lib/action-result";
 import { generateReadingInput } from "@/domain/input-schemas";
-import { getServices } from "@/server/container";
+import { getProfileServices } from "@/server/session";
 
 import { runAction } from "./run-action";
 
@@ -13,8 +13,9 @@ export async function generateReadingAction(input: {
   conceptId: string;
   instructions?: string;
 }): Promise<ActionResult> {
+  const services = await getProfileServices();
   const result = await runAction("generateReading", async () => {
-    await getServices().readings.generateReading(generateReadingInput.parse(input));
+    await services.readings.generateReading(generateReadingInput.parse(input));
     return undefined;
   });
 

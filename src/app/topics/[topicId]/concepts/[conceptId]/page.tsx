@@ -13,8 +13,9 @@ import { BookIcon } from "@/components/ui/icons";
 import { MasteryBadge } from "@/components/ui/mastery-badge";
 import { formatPercent, formatRelativeDate } from "@/lib/format";
 import { extractOutline } from "@/lib/lesson-outline";
-import { getAiProviderInfo, getServices } from "@/server/container";
+import { getAiProviderInfo } from "@/server/container";
 import { orNotFound } from "@/server/or-not-found";
+import { getProfileServices } from "@/server/session";
 
 type ConceptPageProps = PageProps<"/topics/[topicId]/concepts/[conceptId]">;
 
@@ -27,7 +28,8 @@ function readingMinutes(markdown: string): number {
 /** Loads the reading once per request; shared by the metadata and the page. */
 const loadReading = cache(async (topicId: string, conceptId: string) => {
   await connection();
-  return orNotFound(() => getServices().readings.getReading(topicId, conceptId));
+  const services = await getProfileServices();
+  return orNotFound(() => services.readings.getReading(topicId, conceptId));
 });
 
 export async function generateMetadata(props: ConceptPageProps): Promise<Metadata> {

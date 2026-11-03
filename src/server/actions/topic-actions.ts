@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import type { ActionResult } from "@/lib/action-result";
 import { createTopicInput, id } from "@/domain/input-schemas";
-import { getServices } from "@/server/container";
+import { getProfileServices } from "@/server/session";
 
 import { runAction } from "./run-action";
 
@@ -13,12 +13,13 @@ export async function createTopicAction(
   _previous: ActionResult<string> | null,
   formData: FormData,
 ): Promise<ActionResult<string>> {
+  const services = await getProfileServices();
   const result = await runAction("createTopic", () => {
     const input = createTopicInput.parse({
       name: formData.get("name"),
       goal: formData.get("goal") ?? undefined,
     });
-    return getServices().topics.createTopic(input);
+    return services.topics.createTopic(input);
   });
 
   if (!result.ok) return result;
@@ -27,8 +28,9 @@ export async function createTopicAction(
 }
 
 export async function deleteTopicAction(topicId: string): Promise<ActionResult> {
+  const services = await getProfileServices();
   const result = await runAction("deleteTopic", () => {
-    getServices().topics.deleteTopic(id.parse(topicId));
+    services.topics.deleteTopic(id.parse(topicId));
     return undefined;
   });
 

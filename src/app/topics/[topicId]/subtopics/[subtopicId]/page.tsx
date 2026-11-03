@@ -10,15 +10,16 @@ import { ConfirmDeleteButton } from "@/components/ui/confirm-delete-button";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { formatPercent } from "@/lib/format";
 import { deleteSubtopicAction } from "@/server/actions/subtopic-actions";
-import { getServices } from "@/server/container";
 import { orNotFound } from "@/server/or-not-found";
+import { getProfileServices } from "@/server/session";
 
 type SubtopicPageProps = PageProps<"/topics/[topicId]/subtopics/[subtopicId]">;
 
 /** Loads the subtopic once per request; shared by the metadata and the page. */
 const loadSubtopic = cache(async (topicId: string, subtopicId: string) => {
   await connection();
-  return orNotFound(() => getServices().subtopics.getSubtopic(topicId, subtopicId));
+  const services = await getProfileServices();
+  return orNotFound(() => services.subtopics.getSubtopic(topicId, subtopicId));
 });
 
 export async function generateMetadata(props: SubtopicPageProps): Promise<Metadata> {
