@@ -30,4 +30,16 @@ export class ProfileRepository {
   insert(profile: NewProfile): void {
     this.db.insert(profiles).values(profile).run();
   }
+
+  /** Stores a new password hash with the data key wrapped by that password. */
+  setPassword(
+    id: string,
+    credentials: { passwordHash: string; kekSalt: string; dekWrapped: string },
+  ): void {
+    this.db.update(profiles).set(credentials).where(eq(profiles.id, id)).run();
+  }
+
+  recordLogin(id: string, at: Date): void {
+    this.db.update(profiles).set({ lastLoginAt: at }).where(eq(profiles.id, id)).run();
+  }
 }

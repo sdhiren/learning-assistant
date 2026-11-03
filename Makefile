@@ -14,7 +14,7 @@ PROFILES      := npx tsx --conditions=react-server --tsconfig tsconfig.json scri
 
 .DEFAULT_GOAL := help
 .PHONY: help doctor setup install env dev build start test check smoke-provider lint format \
-        db-migrate db-generate db-shell db-backup db-reset clean
+        db-migrate db-generate db-shell db-backup db-reset profile-password clean
 
 help: ## Show this help
 	@echo "Usage: make <command>"
@@ -121,6 +121,10 @@ db-reset: ## Delete ALL progress of one profile and recreate it empty (PROFILE=<
 		read answer; [ "$$answer" = "yes" ] || { echo "Cancelled."; exit 1; }; \
 		rm -f "$$file" "$$file-wal" "$$file-shm"
 	@$(MAKE) --no-print-directory db-migrate
+
+profile-password: ## Reset a profile's password from the terminal (USER=<username>; deletes its saved keys)
+	@[ "$(origin USER)" = "command line" ] || { echo "Choose a profile: make profile-password USER=<username>"; exit 1; }
+	@$(PROFILES) password "$(USER)"
 
 # --- Housekeeping ------------------------------------------------------------
 

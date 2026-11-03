@@ -21,6 +21,7 @@ import { QuizService } from "@/server/services/quiz-service";
 import { ReadingService } from "@/server/services/reading-service";
 import { SubtopicService } from "@/server/services/subtopic-service";
 import { TopicService } from "@/server/services/topic-service";
+import { AuthService } from "@/server/services/auth-service";
 import { UsageService } from "@/server/services/usage-service";
 
 /** The composition root: the only place concrete implementations are wired together. */
@@ -167,6 +168,7 @@ export class ProfileContainer {
 const globalForDb = globalThis as typeof globalThis & {
   __learningAssistantRegistry?: RegistryDatabase;
   __learningAssistantDbs?: Map<string, AppDatabase>;
+  __learningAssistantAuth?: AuthService;
 };
 
 /** The profile registry, opened and migrated once. Registers the legacy database on first start. */
@@ -178,6 +180,18 @@ export function getRegistry(): RegistryDatabase {
     globalForDb.__learningAssistantRegistry = registry;
   }
   return globalForDb.__learningAssistantRegistry;
+}
+
+/**
+ * Sign-in and sessions. Kept across hot reloads so the in-memory lockout
+ * counters survive them too.
+ */
+export function getAuth(): AuthService {
+  globalForDb.__learningAssistantAuth ??= new AuthService(getRegistry(), {
+    profilesDir: getEnv().PROFILES_DIR,
+    initDatabase: (filePath) => createDatabase(filePath).$client.close(),
+  });
+  return globalForDb.__learningAssistantAuth;
 }
 
 let container: ProfileContainer | undefined;

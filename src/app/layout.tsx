@@ -6,7 +6,9 @@ import { connection } from "next/server";
 import { AiProviderProvider } from "@/components/ai-provider-context";
 import { THEME_INIT_SCRIPT } from "@/components/theme/theme";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { logoutAction } from "@/server/actions/auth-actions";
 import { getAiProviderInfo } from "@/server/container";
+import { getCurrentProfile } from "@/server/session";
 
 import "./globals.css";
 
@@ -26,6 +28,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   // The provider comes from the server's env at request time, not from `next build`.
   await connection();
   const { label, usageNote } = getAiProviderInfo();
+  const profile = await getCurrentProfile();
 
   return (
     // The inline script sets data-theme before paint, so React must accept it.
@@ -57,12 +60,27 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               learning-assistant
             </Link>
             <nav className="flex items-center gap-3">
-              <Link
-                href="/settings/usage"
-                className="rounded-md px-2 py-1 text-sm text-muted transition-colors hover:text-ink"
-              >
-                Usage
-              </Link>
+              {profile && (
+                <>
+                  <span className="hidden text-sm font-medium sm:inline" title={profile.username}>
+                    {profile.firstName} {profile.lastName}
+                  </span>
+                  <Link
+                    href="/settings/usage"
+                    className="rounded-md px-2 py-1 text-sm text-muted transition-colors hover:text-ink"
+                  >
+                    Usage
+                  </Link>
+                  <form action={logoutAction}>
+                    <button
+                      type="submit"
+                      className="rounded-md px-2 py-1 text-sm text-muted transition-colors hover:text-ink"
+                    >
+                      Sign out
+                    </button>
+                  </form>
+                </>
+              )}
               <ThemeToggle />
             </nav>
           </div>
