@@ -2,18 +2,25 @@ import { connection } from "next/server";
 
 import { NextUp } from "@/components/dashboard/next-up";
 import { PracticeStats } from "@/components/dashboard/practice-stats";
+import { SuggestedTopics } from "@/components/dashboard/suggested-topics";
 import { CreateTopicForm } from "@/components/topics/create-topic-form";
 import { TopicCard } from "@/components/topics/topic-card";
 import { getAiProviderInfo } from "@/server/container";
-import { getProfileServices } from "@/server/session";
+import { getProfileServices, requireProfile } from "@/server/session";
 
 export default async function HomePage() {
   await connection();
+  const profile = await requireProfile();
   const services = await getProfileServices();
   const topics = services.topics.listTopics();
   const dashboard = services.dashboard.getDashboard();
+  const suggestions = services.suggestions.list({
+    interests: profile.interests,
+    targetRole: profile.targetRole,
+    experienceLevel: profile.experienceLevel,
+  });
   const hasTopics = topics.length > 0;
-  const ai = getAiProviderInfo();
+  const ai = getAiProviderInfo(profile);
 
   return (
     <div className="space-y-10">
@@ -65,6 +72,16 @@ export default async function HomePage() {
           </ul>
         </section>
       )}
+
+      <section
+        aria-labelledby="suggested-heading"
+        className="animate-fade-up space-y-4 [animation-delay:200ms]"
+      >
+        <h2 id="suggested-heading" className="text-lg font-semibold">
+          Suggested for you
+        </h2>
+        <SuggestedTopics view={suggestions} hasInterests={profile.interests.length > 0} />
+      </section>
 
       <section
         aria-labelledby="new-topic-heading"

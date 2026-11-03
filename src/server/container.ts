@@ -25,12 +25,14 @@ import { LlmCallRepository } from "@/server/repositories/llm-call-repository";
 import { QuizRepository } from "@/server/repositories/quiz-repository";
 import { ReadingRepository } from "@/server/repositories/reading-repository";
 import { TopicRepository } from "@/server/repositories/topic-repository";
+import { TopicSuggestionRepository } from "@/server/repositories/topic-suggestion-repository";
 import { DashboardService } from "@/server/services/dashboard-service";
 import { ProgressService } from "@/server/services/progress-service";
 import { QuizService } from "@/server/services/quiz-service";
 import { ReadingService } from "@/server/services/reading-service";
 import { SubtopicService } from "@/server/services/subtopic-service";
 import { TopicService } from "@/server/services/topic-service";
+import { TopicSuggestionService } from "@/server/services/topic-suggestion-service";
 import { AuthService } from "@/server/services/auth-service";
 import { ProfileService } from "@/server/services/profile-service";
 import { SecretService } from "@/server/services/secret-service";
@@ -44,6 +46,7 @@ export interface Services {
   quizzes: QuizService;
   readings: ReadingService;
   usage: UsageService;
+  suggestions: TopicSuggestionService;
 }
 
 /** Builds the client for the configured provider. Env validation rejects unimplemented ones. */
@@ -175,6 +178,11 @@ export class ProfileContainer {
       quizzes: new QuizService(topicRepository, quizRepository, progressService, llm),
       readings: new ReadingService(topicRepository, readingRepository, progressService, llm),
       usage: new UsageService(llmCallRepository),
+      suggestions: new TopicSuggestionService(
+        topicRepository,
+        new TopicSuggestionRepository(db),
+        llm,
+      ),
     };
   }
 }

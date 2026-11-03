@@ -1,4 +1,5 @@
 import { DIFFICULTY_DESCRIPTIONS, type Difficulty } from "@/domain/difficulty";
+import { EXPERIENCE_LEVEL_LABELS, type ExperienceLevel } from "@/domain/profile";
 import { MULTIPLE_CHOICE_OPTION_COUNT } from "@/domain/question";
 
 /**
@@ -354,6 +355,41 @@ program output), and \`backticks\` for identifiers in prose.`,
       "Length: roughly 900 to 1,500 words. Accuracy matters more than length; never invent " +
         "facts, APIs or behaviour you are unsure about.",
       learnerInstructionsSection(input.instructions),
+    ]
+      .filter(Boolean)
+      .join("\n\n"),
+  };
+}
+
+const bulletList = (items: readonly string[]) => items.map((item) => `- ${item}`).join("\n");
+
+export function buildTopicSuggestionsPrompt(input: {
+  interests: readonly string[];
+  targetRole: string;
+  experienceLevel: ExperienceLevel | null;
+  /** Topics the learner already has or dismissed, so they aren't suggested again. */
+  excludedTopicNames: readonly string[];
+}): Prompt {
+  return {
+    systemPrompt: `${PERSONA}\n\n${DATA_HANDLING_RULE}`,
+    prompt: [
+      "Suggest topics this learner should study next to prepare for technical interviews.",
+      tagged("learner_interests", bulletList(input.interests)),
+      input.targetRole ? tagged("target_role", input.targetRole) : "",
+      input.experienceLevel
+        ? tagged("experience_level", EXPERIENCE_LEVEL_LABELS[input.experienceLevel])
+        : "",
+      input.excludedTopicNames.length > 0
+        ? tagged("topics_to_avoid", bulletList(input.excludedTopicNames))
+        : "",
+      "Requirements:",
+      "- 5 to 8 topics, ordered from most to least useful for this learner.",
+      "- Each name is a specific, studyable technical topic of 2 to 6 words " +
+        "(e.g. 'PostgreSQL indexing', not 'Databases').",
+      "- Never repeat or rephrase a topic listed in <topics_to_avoid>.",
+      "- The reason is one sentence on why it suits this learner's interests, role and level.",
+      "- The goal is one short line the learner could use as their study goal for the topic.",
+      "- If an interest is not a technical subject, map it to the closest technical one.",
     ]
       .filter(Boolean)
       .join("\n\n"),

@@ -57,6 +57,9 @@ export const createTopicInput = z.object({
 });
 export type CreateTopicInput = z.infer<typeof createTopicInput>;
 
+/** Dismissing a suggested topic; it is identified by its name. */
+export const dismissSuggestionInput = createTopicInput.pick({ name: true });
+
 export const addSubtopicInput = z.object({
   topicId: id,
   name: singleLineText(SUBTOPIC_NAME_MAX_LENGTH).pipe(

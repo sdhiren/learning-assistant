@@ -6,12 +6,14 @@ import { LlmCallRepository } from "@/server/repositories/llm-call-repository";
 import { QuizRepository } from "@/server/repositories/quiz-repository";
 import { ReadingRepository } from "@/server/repositories/reading-repository";
 import { TopicRepository } from "@/server/repositories/topic-repository";
+import { TopicSuggestionRepository } from "@/server/repositories/topic-suggestion-repository";
 import { DashboardService } from "@/server/services/dashboard-service";
 import { ProgressService } from "@/server/services/progress-service";
 import { QuizService } from "@/server/services/quiz-service";
 import { ReadingService } from "@/server/services/reading-service";
 import { SubtopicService } from "@/server/services/subtopic-service";
 import { TopicService } from "@/server/services/topic-service";
+import { TopicSuggestionService } from "@/server/services/topic-suggestion-service";
 import { UsageService } from "@/server/services/usage-service";
 
 import { FakeLlmClient } from "./fake-llm-client";
@@ -51,6 +53,12 @@ export function createTestApp({ providerLabel = "Claude" }: { providerLabel?: st
       topicRepository,
       new ReadingRepository(db),
       progressService,
+      llm,
+      now,
+    ),
+    suggestions: new TopicSuggestionService(
+      topicRepository,
+      new TopicSuggestionRepository(db),
       llm,
       now,
     ),

@@ -3,13 +3,26 @@ import type { Difficulty } from "@/domain/difficulty";
 import type { Mastery, MasteryLevel } from "@/domain/mastery";
 import type { QuestionType } from "@/domain/question";
 import type { LlmCallOutcome } from "@/domain/usage-stats";
-import type { QuizStatus, SubtopicOrigin } from "@/server/db/schema";
+import type { QuizStatus, SubtopicOrigin, SuggestionSource } from "@/server/db/schema";
 
 /**
  * Data shapes passed from the server to the UI. They contain only what the
  * UI renders. Answer keys in particular never leave the server until the
  * question has been answered.
  */
+
+export interface TopicSuggestionView {
+  name: string;
+  reason: string;
+  /** Empty for catalog suggestions. */
+  goal: string;
+}
+
+export interface TopicSuggestionsView {
+  /** "ai" once the learner has personalised; otherwise "catalog". */
+  source: SuggestionSource;
+  suggestions: TopicSuggestionView[];
+}
 
 export interface TopicSummaryView {
   id: string;

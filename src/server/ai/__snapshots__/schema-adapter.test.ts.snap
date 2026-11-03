@@ -316,6 +316,46 @@ exports[`toProviderJsonSchema > gemini > converts skillTree within the provider'
 }
 `;
 
+exports[`toProviderJsonSchema > gemini > converts topicSuggestions within the provider's keyword allowlist 1`] = `
+{
+  "additionalProperties": false,
+  "properties": {
+    "suggestions": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "goal": {
+            "description": "One short study goal for the topic.",
+            "type": "string",
+          },
+          "name": {
+            "description": "Topic name of 2 to 6 words, e.g. 'Go concurrency'.",
+            "type": "string",
+          },
+          "reason": {
+            "description": "One sentence on why it suits the learner.",
+            "type": "string",
+          },
+        },
+        "required": [
+          "name",
+          "reason",
+          "goal",
+        ],
+        "type": "object",
+      },
+      "maxItems": 8,
+      "minItems": 5,
+      "type": "array",
+    },
+  },
+  "required": [
+    "suggestions",
+  ],
+  "type": "object",
+}
+`;
+
 exports[`toProviderJsonSchema > openai > converts codeReview within the provider's keyword allowlist 1`] = `
 {
   "additionalProperties": false,
@@ -627,6 +667,46 @@ exports[`toProviderJsonSchema > openai > converts skillTree within the provider'
   "required": [
     "summary",
     "subtopics",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`toProviderJsonSchema > openai > converts topicSuggestions within the provider's keyword allowlist 1`] = `
+{
+  "additionalProperties": false,
+  "properties": {
+    "suggestions": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "goal": {
+            "description": "One short study goal for the topic.",
+            "type": "string",
+          },
+          "name": {
+            "description": "Topic name of 2 to 6 words, e.g. 'Go concurrency'.",
+            "type": "string",
+          },
+          "reason": {
+            "description": "One sentence on why it suits the learner.",
+            "type": "string",
+          },
+        },
+        "required": [
+          "name",
+          "reason",
+          "goal",
+        ],
+        "type": "object",
+      },
+      "maxItems": 8,
+      "minItems": 5,
+      "type": "array",
+    },
+  },
+  "required": [
+    "suggestions",
   ],
   "type": "object",
 }
