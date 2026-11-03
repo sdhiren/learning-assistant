@@ -6,10 +6,72 @@ import {
   addSubtopicInput,
   createTopicInput,
   encodeQuizFocus,
+  loginInput,
   maxAnswerLength,
+  registerInput,
+  safeNextPath,
   startQuizInput,
   submitAnswerInput,
 } from "./input-schemas";
+
+describe("registerInput", () => {
+  const valid = {
+    username: " ada.l ",
+    password: "a long enough password",
+    confirmPassword: "a long enough password",
+    firstName: "Ada",
+    lastName: "Lovelace",
+    targetRole: "",
+    experienceLevel: "senior",
+    interests: ["Go", " go ", "Databases"],
+  };
+
+  it("accepts a valid registration, trimming and deduplicating interests", () => {
+    expect(registerInput.parse(valid)).toMatchObject({
+      username: "ada.l",
+      interests: ["Go", "Databases"],
+    });
+  });
+
+  it.each([
+    ["username", { username: "ab" }],
+    ["username", { username: "a".repeat(33) }],
+    ["username", { username: "ada lovelace" }],
+    ["password", { password: "short", confirmPassword: "short" }],
+    ["password", { password: "x".repeat(129), confirmPassword: "x".repeat(129) }],
+    ["confirmPassword", { confirmPassword: "a different password" }],
+    ["firstName", { firstName: "  " }],
+    ["lastName", { lastName: "x".repeat(51) }],
+    ["experienceLevel", { experienceLevel: "wizard" }],
+    ["interests", { interests: [] }],
+    ["interests", { interests: Array.from({ length: 11 }, (_, i) => `Topic ${i}`) }],
+    ["interests", { interests: ["x".repeat(41)] }],
+  ])("rejects a bad %s", (field, override) => {
+    const result = registerInput.safeParse({ ...valid, ...override });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.path[0]).toBe(field);
+  });
+});
+
+describe("loginInput", () => {
+  it("only needs a username", () => {
+    expect(loginInput.safeParse({ username: "", password: "x" }).success).toBe(false);
+    expect(loginInput.safeParse({ username: "ada", password: "" }).success).toBe(true);
+  });
+});
+
+describe("safeNextPath", () => {
+  it.each([
+    ["/topics/abc?x=1", "/topics/abc?x=1"],
+    ["//evil.example", "/"],
+    ["/\\evil.example", "/"],
+    ["https://evil.example", "/"],
+    ["topics", "/"],
+    [null, "/"],
+  ])("maps %s to %s", (value, expected) => {
+    expect(safeNextPath(value)).toBe(expected);
+  });
+});
 
 describe("createTopicInput", () => {
   it("trims the name and defaults the goal", () => {

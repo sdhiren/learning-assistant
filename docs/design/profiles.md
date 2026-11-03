@@ -1,6 +1,6 @@
 # Design: Profiles with isolated data (B13)
 
-Status: **accepted, in progress** (LA-9; PR 1 of 4: registry and per-profile container) ·
+Status: **accepted, in progress** (LA-9; PRs 1–2 of 4: registry, per-profile container, sign-in and sessions) ·
 Backlog: [B13](../BACKLOG.md#b13-profiles-with-isolated-data--in-progress--l)
 
 > LA-9 extends this design: the existing data becomes profile `sdhiren` (not "Default"), profiles
