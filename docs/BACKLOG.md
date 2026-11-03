@@ -24,7 +24,11 @@ lessons or settings. Delivered by LA-9 as four stacked PRs.
   Existing data becomes profile `sdhiren` in place.
 - **Done (PR 1):** registry (`data/app.db`, `drizzle-app/`), legacy-profile bootstrap,
   per-profile composition root, and per-profile `make db-*` tooling.
-- **Next:** password sign-in and sessions with envelope-encrypted secrets (PR 2); profile page,
+- **Done (PR 2):** registration at `/register`, password sign-in at `/login` (with the one-time
+  "Set your password" for `sdhiren`), hashed cookie sessions, the proxy redirect, the
+  encryption envelope (per-profile data key wrapped by password and by session), and
+  `make profile-password`.
+- **Next:** profile page,
   per-profile AI settings and Sign in with Claude (PR 3); interest-based topic suggestions and
   final docs (PR 4).
 

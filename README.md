@@ -60,6 +60,13 @@ make dev
 
 Open <http://127.0.0.1:3000>.
 
+**Profiles.** Each person who uses the app has their own profile, with its own topics, quizzes,
+progress and usage. Create one at <http://127.0.0.1:3000/register> (username, password, name,
+target role, experience and interests). If you used the app before profiles existed, your data
+is kept where it is as profile `sdhiren`: sign in with that username and you're asked to set a
+password once. Forgot a password? Run `make profile-password USER=<username>`. This deletes the
+profile's saved keys, because they're encrypted with the old password.
+
 `make setup` checks your Node.js version and Claude Code login, installs dependencies, creates
 `.env.local` and creates the database. You only need it once; after that, `make dev` is
 enough. Stop the app with `Ctrl+C`.
@@ -111,22 +118,23 @@ short-answer question or coding challenge is one more.
 
 Run `make` to list everything.
 
-| Command               | What it does                                                         |
-| --------------------- | -------------------------------------------------------------------- |
-| `make setup`          | First-time setup: check prerequisites, install, create config and DB |
-| `make doctor`         | Check Node.js version and Claude Code login (or API key)             |
-| `make dev`            | Start in development mode at http://127.0.0.1:3000                   |
-| `make start`          | Build and run in production mode (faster pages)                      |
-| `make dev PORT=4000`  | Use another port (works with `start` too)                            |
-| `make test`           | Run the unit and integration tests                                   |
-| `make check`          | Lint, typecheck, format check and tests; run before committing       |
-| `make smoke-provider` | Real AI calls via `PROVIDER=<id>` (`TASKS=all`: every request type)  |
-| `make db-migrate`     | Migrate the profile registry and every profile's database            |
-| `make db-shell`       | SQL shell on `PROFILE=<username>`'s data, or the registry without it |
-| `make db-backup`      | Save the registry and every profile to `data/backups/<timestamp>/`   |
-| `make db-reset`       | Delete one profile's progress: `PROFILE=<username>` (asks first)     |
-| `make db-generate`    | Generate migrations after editing `schema.ts` or `app-schema.ts`     |
-| `make clean`          | Remove build output and caches (keeps your data)                     |
+| Command                 | What it does                                                            |
+| ----------------------- | ----------------------------------------------------------------------- |
+| `make setup`            | First-time setup: check prerequisites, install, create config and DB    |
+| `make doctor`           | Check Node.js version and Claude Code login (or API key)                |
+| `make dev`              | Start in development mode at http://127.0.0.1:3000                      |
+| `make start`            | Build and run in production mode (faster pages)                         |
+| `make dev PORT=4000`    | Use another port (works with `start` too)                               |
+| `make test`             | Run the unit and integration tests                                      |
+| `make check`            | Lint, typecheck, format check and tests; run before committing          |
+| `make smoke-provider`   | Real AI calls via `PROVIDER=<id>` (`TASKS=all`: every request type)     |
+| `make db-migrate`       | Migrate the profile registry and every profile's database               |
+| `make db-shell`         | SQL shell on `PROFILE=<username>`'s data, or the registry without it    |
+| `make db-backup`        | Save the registry and every profile to `data/backups/<timestamp>/`      |
+| `make db-reset`         | Delete one profile's progress: `PROFILE=<username>` (asks first)        |
+| `make profile-password` | Reset a password: `USER=<username>` (deletes that profile's saved keys) |
+| `make db-generate`      | Generate migrations after editing `schema.ts` or `app-schema.ts`        |
+| `make clean`            | Remove build output and caches (keeps your data)                        |
 
 The equivalent npm scripts (`npm run dev`, `npm test`, `npm run check`, ...) also work.
 
