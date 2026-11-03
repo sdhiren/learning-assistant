@@ -105,8 +105,10 @@ export class ProfileService {
     this.secrets.remove(profileId, kind);
   }
 
+  /** Starting again replaces any earlier login (the config dir is emptied first). */
   startClaudeSignIn(profileId: string): Promise<{ flowId: string; url: string }> {
     this.assertSignInSupported();
+    this.profiles.setClaudeSignedInAt(profileId, null);
     return this.claudeLogin.start(profileId);
   }
 

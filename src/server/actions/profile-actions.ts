@@ -135,7 +135,9 @@ export async function startClaudeSignInAction(): Promise<
 > {
   return runAction("startClaudeSignIn", async () => {
     const { profile } = await requireSession();
-    return getProfileSettings().startClaudeSignIn(profile.id);
+    const flow = await getProfileSettings().startClaudeSignIn(profile.id);
+    invalidateProfile(profile.id);
+    return flow;
   });
 }
 
