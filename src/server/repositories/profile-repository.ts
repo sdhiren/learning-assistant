@@ -1,6 +1,6 @@
 import "server-only";
 
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 
 import type { RegistryDatabase } from "@/server/db/app-client";
 import { profiles, type ProfileRow } from "@/server/db/app-schema";
@@ -37,6 +37,22 @@ export class ProfileRepository {
     credentials: { passwordHash: string; kekSalt: string; dekWrapped: string },
   ): void {
     this.db.update(profiles).set(credentials).where(eq(profiles.id, id)).run();
+  }
+
+  /**
+   * Like `setPassword`, but only while the profile has no password. Returns
+   * false if another request set one first, so a profile can be claimed once.
+   */
+  claimPassword(
+    id: string,
+    credentials: { passwordHash: string; kekSalt: string; dekWrapped: string },
+  ): boolean {
+    const result = this.db
+      .update(profiles)
+      .set(credentials)
+      .where(and(eq(profiles.id, id), isNull(profiles.passwordHash)))
+      .run();
+    return result.changes === 1;
   }
 
   recordLogin(id: string, at: Date): void {
