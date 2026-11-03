@@ -8,7 +8,9 @@ import type { LlmClient } from "@/server/ai/llm-client";
 import { OpenAiClient } from "@/server/ai/openai-client";
 import { PROVIDERS, type ProviderId } from "@/server/ai/providers";
 import { getAiConfig, getEnv, type AiConfig } from "@/server/config/env";
+import { createRegistryDatabase, type RegistryDatabase } from "@/server/db/app-client";
 import { createDatabase, type AppDatabase } from "@/server/db/client";
+import { ensureLegacyProfile } from "@/server/registry-bootstrap";
 import { LlmCallRepository } from "@/server/repositories/llm-call-repository";
 import { QuizRepository } from "@/server/repositories/quiz-repository";
 import { ReadingRepository } from "@/server/repositories/reading-repository";
@@ -29,15 +31,6 @@ export interface Services {
   quizzes: QuizService;
   readings: ReadingService;
   usage: UsageService;
-}
-
-// Only the database connection survives dev hot reloads; services are rebuilt
-// from the current module code so edits take effect without a restart.
-const globalForDb = globalThis as typeof globalThis & { __learningAssistantDb?: AppDatabase };
-
-function getDatabase(): AppDatabase {
-  globalForDb.__learningAssistantDb ??= createDatabase(getEnv().DATABASE_PATH);
-  return globalForDb.__learningAssistantDb;
 }
 
 /** Builds the client for the configured provider. Env validation rejects unimplemented ones. */
@@ -86,34 +79,116 @@ export function getAiProviderInfo(): AiProviderInfo {
   return { id: provider, label, usageNote };
 }
 
-function createServices(): Services {
-  const db = getDatabase();
-  const aiConfig = getAiConfig();
-  const llmCallRepository = new LlmCallRepository(db);
-  const llm = new InstrumentedLlmClient(createLlmClient(aiConfig), {
-    provider: aiConfig.provider,
-    model: aiConfig.model,
-    sink: llmCallRepository,
-  });
-
-  const topicRepository = new TopicRepository(db);
-  const quizRepository = new QuizRepository(db);
-  const readingRepository = new ReadingRepository(db);
-  const progressService = new ProgressService(quizRepository);
-
-  return {
-    dashboard: new DashboardService(topicRepository, quizRepository, progressService),
-    topics: new TopicService(topicRepository, quizRepository, progressService, llm),
-    subtopics: new SubtopicService(topicRepository, progressService, llm),
-    quizzes: new QuizService(topicRepository, quizRepository, progressService, llm),
-    readings: new ReadingService(topicRepository, readingRepository, progressService, llm),
-    usage: new UsageService(llmCallRepository),
-  };
+/** What the container needs to know about a profile. */
+export interface ProfileRef {
+  id: string;
+  dbPath: string;
 }
 
-let services: Services | undefined;
+export interface ProfileContainerOptions {
+  /** Open connections by profile id. Pass a long-lived map so connections survive hot reloads. */
+  databases?: Map<string, AppDatabase>;
+  openDatabase?: (filePath: string) => AppDatabase;
+  createLlm?: (config: AiConfig) => LlmClient;
+  aiConfig?: (profile: ProfileRef) => AiConfig;
+}
 
-export function getServices(): Services {
-  services ??= createServices();
-  return services;
+/**
+ * One database connection and one services graph per profile. A profile's
+ * services hold a connection only to that profile's file, so no query can
+ * reach another profile's data. Services are rebuilt when the profile's AI
+ * settings change or after `invalidate()`.
+ */
+export class ProfileContainer {
+  private readonly databases: Map<string, AppDatabase>;
+  private readonly services = new Map<string, { fingerprint: string; services: Services }>();
+  private readonly openDatabase: (filePath: string) => AppDatabase;
+  private readonly createLlm: (config: AiConfig) => LlmClient;
+  private readonly aiConfig: (profile: ProfileRef) => AiConfig;
+
+  constructor(options: ProfileContainerOptions = {}) {
+    this.databases = options.databases ?? new Map();
+    this.openDatabase = options.openDatabase ?? createDatabase;
+    this.createLlm = options.createLlm ?? createLlmClient;
+    this.aiConfig = options.aiConfig ?? (() => getAiConfig());
+  }
+
+  servicesFor(profile: ProfileRef): Services {
+    const aiConfig = this.aiConfig(profile);
+    const fingerprint = `${aiConfig.provider}:${aiConfig.model}`;
+    const cached = this.services.get(profile.id);
+    if (cached?.fingerprint === fingerprint) return cached.services;
+
+    const services = this.createServices(this.databaseFor(profile), aiConfig);
+    this.services.set(profile.id, { fingerprint, services });
+    return services;
+  }
+
+  /** Drops a profile's services (and any secrets they hold); the next request rebuilds them. */
+  invalidate(profileId: string): void {
+    this.services.delete(profileId);
+  }
+
+  private databaseFor(profile: ProfileRef): AppDatabase {
+    let db = this.databases.get(profile.id);
+    if (!db) {
+      db = this.openDatabase(profile.dbPath);
+      this.databases.set(profile.id, db);
+    }
+    return db;
+  }
+
+  private createServices(db: AppDatabase, aiConfig: AiConfig): Services {
+    const llmCallRepository = new LlmCallRepository(db);
+    const llm = new InstrumentedLlmClient(this.createLlm(aiConfig), {
+      provider: aiConfig.provider,
+      model: aiConfig.model,
+      sink: llmCallRepository,
+    });
+
+    const topicRepository = new TopicRepository(db);
+    const quizRepository = new QuizRepository(db);
+    const readingRepository = new ReadingRepository(db);
+    const progressService = new ProgressService(quizRepository);
+
+    return {
+      dashboard: new DashboardService(topicRepository, quizRepository, progressService),
+      topics: new TopicService(topicRepository, quizRepository, progressService, llm),
+      subtopics: new SubtopicService(topicRepository, progressService, llm),
+      quizzes: new QuizService(topicRepository, quizRepository, progressService, llm),
+      readings: new ReadingService(topicRepository, readingRepository, progressService, llm),
+      usage: new UsageService(llmCallRepository),
+    };
+  }
+}
+
+// Only database connections survive dev hot reloads; services are rebuilt
+// from the current module code so edits take effect without a restart.
+const globalForDb = globalThis as typeof globalThis & {
+  __learningAssistantRegistry?: RegistryDatabase;
+  __learningAssistantDbs?: Map<string, AppDatabase>;
+};
+
+/** The profile registry, opened and migrated once. Registers the legacy database on first start. */
+export function getRegistry(): RegistryDatabase {
+  if (!globalForDb.__learningAssistantRegistry) {
+    const env = getEnv();
+    const registry = createRegistryDatabase(env.REGISTRY_PATH);
+    ensureLegacyProfile(registry, env.DATABASE_PATH);
+    globalForDb.__learningAssistantRegistry = registry;
+  }
+  return globalForDb.__learningAssistantRegistry;
+}
+
+let container: ProfileContainer | undefined;
+
+export function getContainer(): ProfileContainer {
+  container ??= new ProfileContainer({
+    databases: (globalForDb.__learningAssistantDbs ??= new Map()),
+  });
+  return container;
+}
+
+export function invalidateProfile(profileId: string): void {
+  getContainer().invalidate(profileId);
 }

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import { addSubtopicInput, deleteSubtopicInput } from "@/domain/input-schemas";
 import type { ActionResult } from "@/lib/action-result";
-import { getServices } from "@/server/container";
+import { getProfileServices } from "@/server/session";
 
 import { runAction } from "./run-action";
 
@@ -14,6 +14,7 @@ export async function addSubtopicAction(
   formData: FormData,
 ): Promise<ActionResult<string>> {
   let topicId = "";
+  const services = await getProfileServices();
   const result = await runAction("addSubtopic", () => {
     const input = addSubtopicInput.parse({
       topicId: formData.get("topicId"),
@@ -21,7 +22,7 @@ export async function addSubtopicAction(
       notes: formData.get("notes") ?? undefined,
     });
     topicId = input.topicId;
-    return getServices().subtopics.addSubtopic(input);
+    return services.subtopics.addSubtopic(input);
   });
 
   if (!result.ok) return result;
@@ -33,10 +34,11 @@ export async function deleteSubtopicAction(input: {
   subtopicId: string;
 }): Promise<ActionResult> {
   let topicId = "";
+  const services = await getProfileServices();
   const result = await runAction("deleteSubtopic", () => {
     const parsed = deleteSubtopicInput.parse(input);
     topicId = parsed.topicId;
-    getServices().subtopics.deleteSubtopic(parsed.topicId, parsed.subtopicId);
+    services.subtopics.deleteSubtopic(parsed.topicId, parsed.subtopicId);
     return undefined;
   });
 

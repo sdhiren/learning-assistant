@@ -14,16 +14,19 @@ Status: `todo` · `in progress` · `done`. Size: S (hours), M (a day), L (severa
 
 ## Requested
 
-### B13. Profiles with isolated data — `todo` · L
+### B13. Profiles with isolated data — `in progress` · L
 
 Several profiles in one installation; two profiles never share topics, quizzes, answers, mastery,
-lessons or settings.
+lessons or settings. Delivered by LA-9 as four stacked PRs.
 
-- **Design:** [docs/design/profiles.md](design/profiles.md). Recommended approach: one SQLite
-  file per profile, plus a small profile registry. Isolation is structural, with no per-query
-  filtering to get wrong. Existing data becomes the "Default" profile in place.
-- **Open question:** is separating data enough, or should a profile be PIN-locked so someone else
-  using the same Mac can't switch into it?
+- **Design:** [docs/design/profiles.md](design/profiles.md). One SQLite file per profile, plus a
+  small profile registry. Isolation is structural, with no per-query filtering to get wrong.
+  Existing data becomes profile `sdhiren` in place.
+- **Done (PR 1):** registry (`data/app.db`, `drizzle-app/`), legacy-profile bootstrap,
+  per-profile composition root, and per-profile `make db-*` tooling.
+- **Next:** password sign-in and sessions with envelope-encrypted secrets (PR 2); profile page,
+  per-profile AI settings and Sign in with Claude (PR 3); interest-based topic suggestions and
+  final docs (PR 4).
 
 ### B14. Multiple AI providers (Anthropic API key first) — `in progress` · M
 

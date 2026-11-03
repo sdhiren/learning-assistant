@@ -1,6 +1,11 @@
 # Design: Profiles with isolated data (B13)
 
-Status: **proposed** · Backlog: [B13](../BACKLOG.md#b13-profiles-with-isolated-data--todo--l)
+Status: **accepted, in progress** (LA-9; PR 1 of 4: registry and per-profile container) ·
+Backlog: [B13](../BACKLOG.md#b13-profiles-with-isolated-data--in-progress--l)
+
+> LA-9 extends this design: the existing data becomes profile `sdhiren` (not "Default"), profiles
+> sign in with a password instead of a switcher cookie, and each profile chooses its own AI
+> provider. The registry `profiles` table carries those columns from the start.
 
 ## Requirement
 

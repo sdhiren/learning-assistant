@@ -9,7 +9,7 @@ import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 
 import * as schema from "./schema";
 
-export type AppDatabase = BetterSQLite3Database<typeof schema>;
+export type AppDatabase = BetterSQLite3Database<typeof schema> & { $client: Database.Database };
 
 const MIGRATIONS_FOLDER = path.join(process.cwd(), "drizzle");
 

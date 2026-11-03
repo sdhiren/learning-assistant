@@ -4,11 +4,12 @@ import { NextUp } from "@/components/dashboard/next-up";
 import { PracticeStats } from "@/components/dashboard/practice-stats";
 import { CreateTopicForm } from "@/components/topics/create-topic-form";
 import { TopicCard } from "@/components/topics/topic-card";
-import { getAiProviderInfo, getServices } from "@/server/container";
+import { getAiProviderInfo } from "@/server/container";
+import { getProfileServices } from "@/server/session";
 
 export default async function HomePage() {
   await connection();
-  const services = getServices();
+  const services = await getProfileServices();
   const topics = services.topics.listTopics();
   const dashboard = services.dashboard.getDashboard();
   const hasTopics = topics.length > 0;

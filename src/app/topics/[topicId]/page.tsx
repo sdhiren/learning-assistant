@@ -15,13 +15,15 @@ import { MasteryBadge } from "@/components/ui/mastery-badge";
 import { ProgressRing } from "@/components/ui/progress-ring";
 import { formatPercent } from "@/lib/format";
 import { deleteTopicAction } from "@/server/actions/topic-actions";
-import { getAiProviderInfo, getServices } from "@/server/container";
+import { getAiProviderInfo } from "@/server/container";
 import { orNotFound } from "@/server/or-not-found";
+import { getProfileServices } from "@/server/session";
 
 /** Loads the overview once per request; shared by the metadata and the page. */
 const loadTopic = cache(async (topicId: string) => {
   await connection();
-  return orNotFound(() => getServices().topics.getTopicOverview(topicId));
+  const services = await getProfileServices();
+  return orNotFound(() => services.topics.getTopicOverview(topicId));
 });
 
 export async function generateMetadata(props: PageProps<"/topics/[topicId]">): Promise<Metadata> {

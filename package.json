@@ -12,7 +12,7 @@
     "test:watch": "vitest",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "db:generate": "drizzle-kit generate",
+    "db:generate": "drizzle-kit generate && drizzle-kit generate --config drizzle-app.config.ts",
     "check": "npm run lint && npm run typecheck && npm run format:check && npm run test"
   },
   "dependencies": {

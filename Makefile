@@ -6,9 +6,11 @@
 export
 
 DATABASE_PATH ?= ./data/learning-assistant.db
+REGISTRY_PATH ?= ./data/app.db
 PORT          ?= 3000
 BACKUP_DIR    := ./data/backups
 MIN_NODE      := 22.12.0
+PROFILES      := npx tsx --conditions=react-server --tsconfig tsconfig.json scripts/profiles.ts
 
 .DEFAULT_GOAL := help
 .PHONY: help doctor setup install env dev build start test check smoke-provider lint format \
@@ -89,30 +91,35 @@ lint: ## Run ESLint
 format: ## Format all files with Prettier
 	npm run format
 
-# --- Database (SQLite file at $(DATABASE_PATH)) ------------------------------
+# --- Databases (registry at $(REGISTRY_PATH), one SQLite file per profile) ----
 
-db-migrate: ## Create the database / apply pending migrations
-	@mkdir -p "$(dir $(DATABASE_PATH))"
-	@npx drizzle-kit migrate >/dev/null && echo "✓ Database ready at $(DATABASE_PATH)"
+db-migrate: ## Migrate the registry and every profile database (registers existing data as sdhiren)
+	@$(PROFILES) migrate
 
-db-generate: ## Generate a migration after editing src/server/db/schema.ts
+db-generate: ## Generate migrations after editing src/server/db/schema.ts or app-schema.ts
 	npm run db:generate
 
-db-shell: ## Open an interactive SQL shell on the database
+db-shell: ## SQL shell on a profile's database (PROFILE=<username>), or the registry without it
 	@command -v sqlite3 >/dev/null 2>&1 || { echo "sqlite3 is not installed."; exit 1; }
-	sqlite3 -header -column "$(DATABASE_PATH)"
+	@if [ -n "$(PROFILE)" ]; then file=$$($(PROFILES) path "$(PROFILE)") || exit 1; \
+		else file="$(REGISTRY_PATH)"; fi; \
+		sqlite3 -header -column "$$file"
 
-db-backup: ## Save a consistent copy of the database to data/backups/
+db-backup: ## Save consistent copies of the registry and every profile database to data/backups/
 	@command -v sqlite3 >/dev/null 2>&1 || { echo "sqlite3 is not installed."; exit 1; }
-	@test -f "$(DATABASE_PATH)" || { echo "No database at $(DATABASE_PATH)"; exit 1; }
-	@mkdir -p "$(BACKUP_DIR)"
-	@file="$(BACKUP_DIR)/learning-assistant-$$(date +%Y%m%d-%H%M%S).db"; \
-		sqlite3 "$(DATABASE_PATH)" ".backup '$$file'" && echo "✓ Backup saved to $$file"
+	@test -f "$(REGISTRY_PATH)" || { echo "No registry at $(REGISTRY_PATH). Run: make db-migrate"; exit 1; }
+	@dir="$(BACKUP_DIR)/$$(date +%Y%m%d-%H%M%S)"; mkdir -p "$$dir"; \
+		sqlite3 "$(REGISTRY_PATH)" ".backup '$$dir/app.db'" || exit 1; \
+		$(PROFILES) paths | while read -r name file; do \
+			sqlite3 "$$file" ".backup '$$dir/$$name.db'" || exit 1; done && \
+		echo "✓ Backup saved to $$dir"
 
-db-reset: ## Delete ALL progress and recreate an empty database (asks first)
-	@printf "This deletes all topics, quizzes and progress in $(DATABASE_PATH). Type 'yes' to continue: "; \
-		read answer; [ "$$answer" = "yes" ] || { echo "Cancelled."; exit 1; }
-	@rm -f "$(DATABASE_PATH)" "$(DATABASE_PATH)-wal" "$(DATABASE_PATH)-shm"
+db-reset: ## Delete ALL progress of one profile and recreate it empty (PROFILE=<username>, asks first)
+	@[ -n "$(PROFILE)" ] || { echo "Choose a profile: make db-reset PROFILE=<username>"; exit 1; }
+	@file=$$($(PROFILES) path "$(PROFILE)") || exit 1; \
+		printf "This deletes all topics, quizzes and progress of profile $(PROFILE) in $$file. Type 'yes' to continue: "; \
+		read answer; [ "$$answer" = "yes" ] || { echo "Cancelled."; exit 1; }; \
+		rm -f "$$file" "$$file-wal" "$$file-shm"
 	@$(MAKE) --no-print-directory db-migrate
 
 # --- Housekeeping ------------------------------------------------------------

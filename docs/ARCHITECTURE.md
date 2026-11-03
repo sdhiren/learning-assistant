@@ -51,6 +51,18 @@ Browser ──► proxy.ts (Host must be loopback)
 Services depend on the `LlmClient` interface and on repositories, never on Next.js.
 `server/container.ts` is the only place concrete implementations are created.
 
+**Composition root, per profile.** `ProfileContainer` (in `container.ts`) holds one database
+connection and one services graph **per profile**, built lazily and cached by profile id. A
+profile's services hold a connection only to that profile's SQLite file, so isolation is
+structural: no query can reach another profile's data, and learning tables need no `profile_id`.
+The services cache is keyed by an AI-settings fingerprint (provider and model) and
+`invalidateProfile(id)` drops an entry, so a settings change takes effect on the next request.
+Pages and actions call `getProfileServices()` (`server/session.ts`) once, at the start of the
+request; the services stay bound to that profile, so a long AI call writes to the profile that
+started it. Connections and the registry live on `globalThis` to survive dev hot reloads; services
+are rebuilt from the current module code. Until sign-in lands, the resolver returns the single
+registered profile, and an install with none shows "No profile yet" (`/no-profile`).
+
 ## Key decisions
 
 | Decision       | Choice                                                                                                                                                      | Why                                                                                           | Trade-off                                                                                               |
@@ -63,6 +75,26 @@ Services depend on the `LlmClient` interface and on repositories, never on Next.
 | Mastery        | Recency- and difficulty-weighted average per concept; "strong" requires at least 3 attempts                                                                 | Simple, explainable, testable                                                                 | Not a full knowledge-tracing model (planned for Phase 2)                                                |
 
 ## Data model
+
+Storage is a small **registry** plus **one SQLite file per profile**:
+
+```
+data/
+  app.db                                        registry (REGISTRY_PATH): profiles
+  learning-assistant.db                         pre-profiles data (DATABASE_PATH), profile sdhiren
+  profiles/<profile-id>/learning-assistant.db   each new profile (PROFILES_DIR)
+```
+
+The registry's `profiles` table holds the username (unique ignoring case via `username_key`),
+an optional `password_hash`, names, target role, experience level, interests (JSON), `db_path`,
+the optional per-profile `ai_provider` / `ai_model` (null means the env defaults), the wrapped
+data key fields `kek_salt` / `dek_wrapped`, and timestamps. `db_path` is stored per profile, so the
+pre-profiles database is registered **where it is**: on first start (`ensureLegacyProfile` in
+`server/registry-bootstrap.ts`, run when the registry opens and by `make db-migrate`), if the
+registry is empty and `DATABASE_PATH` exists, it becomes profile `sdhiren` (Dhirendra Singh) with
+no password, in one transaction. Nothing is moved or rewritten. A fresh install creates no profile.
+
+Each profile database has the learning tables:
 
 ```
 topics 1─* subtopics 1─* concepts   (skill map; positions give curriculum order)
@@ -175,13 +207,26 @@ controls that make that safe:
 
 ## Migrations
 
-Migrations live in `drizzle/` and run automatically at startup (and with `make db-migrate`).
+There are two migration folders, each with its own Drizzle config:
+
+- `drizzle/` (`drizzle.config.ts`, schema `src/server/db/schema.ts`) for every profile database.
+  Each file is migrated when it is first opened.
+- `drizzle-app/` (`drizzle-app.config.ts`, schema `src/server/db/app-schema.ts`) for the
+  registry, migrated when it is opened.
+
+`npm run db:generate` runs both configs. `make db-migrate` (`scripts/profiles.ts migrate`)
+migrates the registry, registers the legacy database if needed, then migrates every profile
+database. `make db-reset` requires `PROFILE=<username>` and recreates only that profile's file;
+`make db-shell PROFILE=<username>` opens one profile (the registry without it); `make db-backup`
+copies the registry and every profile database to a timestamped folder in `data/backups/`.
+
 Drizzle runs all pending migrations inside a single transaction, where
 `PRAGMA foreign_keys=OFF` has no effect. Rebuilding a table (`DROP` + `CREATE`), which is what
 drizzle-kit generates for many SQLite changes, would therefore cascade-delete child rows such as
 questions and attempts. Schema changes must use `ALTER TABLE … ADD/DROP COLUMN`, as
 `0001_subtopics.sql` does; a `NOT NULL` that can't be declared that way is enforced with
-triggers. Test every migration against a copy of a real database (`make db-backup` first).
+triggers. Registry migrations contain only `CREATE TABLE` and `ALTER TABLE … ADD`. Test every
+migration against a copy of a real database (`make db-backup` first).
 
 ## Testing
 
