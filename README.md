@@ -74,7 +74,9 @@ All settings are optional. Copy `.env.example` to `.env.local` to change them.
 
 | Variable            | Default                        | Purpose                                                                     |
 | ------------------- | ------------------------------ | --------------------------------------------------------------------------- |
-| `DATABASE_PATH`     | `./data/learning-assistant.db` | Where your progress is stored                                               |
+| `DATABASE_PATH`     | `./data/learning-assistant.db` | Pre-profiles data; registered in place as profile `sdhiren` on first start  |
+| `REGISTRY_PATH`     | `./data/app.db`                | The profile registry                                                        |
+| `PROFILES_DIR`      | `./data/profiles`              | Where new profiles' databases are created                                   |
 | `AI_PROVIDER`       | `claude-code`                  | `claude-code` (your Claude subscription), `anthropic`, `openai` or `gemini` |
 | `AI_MODEL`          | provider default               | Model used for generation and grading (see below)                           |
 | `ANTHROPIC_API_KEY` | none                           | Required when `AI_PROVIDER=anthropic`; ignored in `claude-code` mode        |
@@ -119,11 +121,11 @@ Run `make` to list everything.
 | `make test`           | Run the unit and integration tests                                   |
 | `make check`          | Lint, typecheck, format check and tests; run before committing       |
 | `make smoke-provider` | Real AI calls via `PROVIDER=<id>` (`TASKS=all`: every request type)  |
-| `make db-migrate`     | Create the database or apply pending migrations                      |
-| `make db-shell`       | Open a SQL shell on your data (`.tables`, `.quit`)                   |
-| `make db-backup`      | Save a timestamped copy to `data/backups/`                           |
-| `make db-reset`       | Delete all progress and start fresh (asks for confirmation)          |
-| `make db-generate`    | Generate a migration after editing `src/server/db/schema.ts`         |
+| `make db-migrate`     | Migrate the profile registry and every profile's database            |
+| `make db-shell`       | SQL shell on `PROFILE=<username>`'s data, or the registry without it |
+| `make db-backup`      | Save the registry and every profile to `data/backups/<timestamp>/`   |
+| `make db-reset`       | Delete one profile's progress: `PROFILE=<username>` (asks first)     |
+| `make db-generate`    | Generate migrations after editing `schema.ts` or `app-schema.ts`     |
 | `make clean`          | Remove build output and caches (keeps your data)                     |
 
 The equivalent npm scripts (`npm run dev`, `npm test`, `npm run check`, ...) also work.
@@ -158,7 +160,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design and the reasonin
 - **Reading the server logs:** each line is one JSON object (`ts`, `level`, `msg`, and the
   action's `requestId`), so `grep '"requestId":"<id>"'` or `jq` work; the old
   `[learning-assistant]` prefix is gone. Set `LOG_LEVEL=debug|info|warn|error` in `.env.local`.
-- **Start over:** run `make db-reset` (consider `make db-backup` first).
+- **Start over:** run `make db-reset PROFILE=<username>` (consider `make db-backup` first).
 - **Port 3000 already in use:** run `make dev PORT=4000`.
 
 ## Roadmap
