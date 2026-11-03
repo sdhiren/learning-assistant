@@ -129,12 +129,14 @@ export class AuthService {
   /** Sets the first password of a profile that has none, then signs in. Only works once. */
   async setInitialPassword(input: SetInitialPasswordInput): Promise<SignedIn> {
     const profile = this.profiles.findByUsername(input.username);
-    if (!profile || profile.passwordHash !== null) {
-      throw new AppError("This profile already has a password. Sign in instead.");
-    }
+    const alreadySet = new AppError("This profile already has a password. Sign in instead.");
+    if (!profile || profile.passwordHash !== null) throw alreadySet;
 
     const dek = generateDataKey();
-    this.profiles.setPassword(profile.id, await this.credentialsFor(input.password, dek));
+    // Hashing is async, so another request may have claimed it meanwhile.
+    if (!this.profiles.claimPassword(profile.id, await this.credentialsFor(input.password, dek))) {
+      throw alreadySet;
+    }
     return this.signIn(this.requireProfile(profile.id), dek);
   }
 

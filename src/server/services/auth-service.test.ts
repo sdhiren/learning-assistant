@@ -153,6 +153,34 @@ describe("AuthService", () => {
     ).toBeTruthy();
   });
 
+  it("lets only one of two concurrent requests claim the first password", async () => {
+    new ProfileRepository(registry).insert({
+      id: "legacy",
+      username: "sdhiren",
+      usernameKey: "sdhiren",
+      firstName: "Dhirendra",
+      lastName: "Singh",
+      dbPath: "./data/learning-assistant.db",
+      createdAt: now,
+    });
+    const other = "someone else's pass";
+
+    const results = await Promise.allSettled([
+      auth.setInitialPassword({
+        username: "sdhiren",
+        password: PASSWORD,
+        confirmPassword: PASSWORD,
+      }),
+      auth.setInitialPassword({ username: "sdhiren", password: other, confirmPassword: other }),
+    ]);
+
+    expect(results.map((result) => result.status).sort()).toEqual(["fulfilled", "rejected"]);
+    const winner = results[0].status === "fulfilled" ? PASSWORD : other;
+    expect(
+      signedIn(await auth.login({ username: "sdhiren", password: winner })).token,
+    ).toBeTruthy();
+  });
+
   it("slides sessions over 30 idle days and expires them after", async () => {
     const { token } = await auth.register(newUser());
 
