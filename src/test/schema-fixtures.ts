@@ -55,4 +55,9 @@ export const SCHEMA_FIXTURES: { [K in AiSchemaName]: z.output<(typeof AI_SCHEMAS
     markdown: "## Overview\n\nThe event loop...",
     keyTakeaways: ["One thread", "Microtasks first", "Never block the loop"],
   },
+  topicSuggestions: {
+    suggestions: ["Go concurrency", "Go interfaces", "Raft", "PostgreSQL indexing", "TLS"].map(
+      (name) => ({ name, reason: "Fits your interests.", goal: "Senior backend interview" }),
+    ),
+  },
 };

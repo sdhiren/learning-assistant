@@ -21,6 +21,7 @@ import {
   buildShortAnswerGradingPrompt,
   buildSkillTreePrompt,
   buildSubtopicPrompt,
+  buildTopicSuggestionsPrompt,
   type Prompt,
 } from "@/server/ai/prompts";
 import { redactSecrets } from "@/server/ai/provider-errors";
@@ -33,6 +34,7 @@ import {
   readingSchema,
   shortAnswerGradeSchema,
   skillTreeSchema,
+  topicSuggestionsSchema,
 } from "@/server/ai/schemas";
 import { getAiConfig } from "@/server/config/env";
 import { createLlmClient } from "@/server/container";
@@ -216,6 +218,24 @@ const EXTRA_TASKS: SmokeTask[] = [
         "medium",
       );
       return `${reading.markdown.length} chars, ${reading.keyTakeaways.length} takeaways`;
+    },
+  },
+  {
+    name: "suggest-topics",
+    async run(llm) {
+      const output = await call(
+        llm,
+        "suggest-topics",
+        buildTopicSuggestionsPrompt({
+          interests: ["Go", "Distributed systems"],
+          targetRole: "Backend engineer",
+          experienceLevel: "senior",
+          excludedTopicNames: ["Go concurrency"],
+        }),
+        topicSuggestionsSchema,
+        "low",
+      );
+      return `${output.suggestions.length} suggestions`;
     },
   },
 ];

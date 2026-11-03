@@ -1,6 +1,7 @@
 # Design: multiple AI providers, Anthropic API key first (B14)
 
-Status: **stage 1 done** (Anthropic API key, then OpenAI and Gemini in LA-2) · Backlog:
+Status: **stages 1 and 2 done** (Anthropic API key, then OpenAI and Gemini in LA-2; per-profile
+settings and Sign in with Claude in LA-9) · Backlog:
 [B14](../BACKLOG.md#b14-multiple-ai-providers-anthropic-api-key-first--in-progress--m)
 
 ## Requirement
@@ -281,10 +282,11 @@ end-to-end checklist in the LA-9 plan. What the code assumes, and what to check:
 
 ## Open questions
 
-1. **Key scope:** one key for the whole app, or a key per profile? Recommended: per profile,
-   which needs B13 first.
-2. ~~**Storage:** env var or settings page?~~ Resolved: env var first (stage 1); the settings page
-   with Keychain storage stays stage 2.
+1. ~~**Key scope:** one key for the whole app, or a key per profile?~~ Resolved (LA-9): per
+   profile, with the env var as the fallback.
+2. ~~**Storage:** env var or settings page?~~ Resolved: env var first (stage 1), then the
+   `/profile` settings page (stage 2), which stores keys as AES-256-GCM ciphertext under the
+   profile's password-wrapped data key instead of the macOS Keychain, so it works on Linux too.
 3. **Model with an API key:** keep `claude-opus-5-5` (best quality), or offer a cheaper model?
    `AI_MODEL` already allows any model; the default stays Opus 5.5.
 
@@ -294,5 +296,5 @@ end-to-end checklist in the LA-9 plan. What the code assumes, and what to check:
    subscription env fix, provider-neutral copy. **M** (this PR)
 2. `OpenAiClient` and `GeminiClient`, the schema adapter, the contract suite and the smoke
    script. **M** (done in LA-2, one PR by the owner's decision)
-3. Settings page with Keychain storage, validation and the cost display. **M**, after B13 if keys
-   are per profile.
+3. Per-profile settings page with envelope-encrypted keys, key validation and Sign in with
+   Claude. **Done in LA-9 PR 3.** (Cost display shipped earlier as the Usage page, LA-4.)

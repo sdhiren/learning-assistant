@@ -105,7 +105,19 @@ quizzes *─0..1 subtopics / concepts (optional quiz focus)
 questions 1─1 attempts              (one graded answer per question)
 concepts 1─1 readings               (latest lesson)
 llm_calls                           (one row per AI call; standalone, no foreign keys)
+topic_suggestions                   (cached AI suggestions and dismissals; standalone)
 ```
+
+`topic_suggestions` (migration 0005, CREATE only) holds `name`, `name_key` (unique, same
+normalisation as `topics.name_key`), `reason`, `goal`, `source` (`catalog | ai`), `created_at`
+and `dismissed_at`. "Suggested for you" on the dashboard comes from `TopicSuggestionService`:
+the cached, undismissed AI rows if there are any, otherwise `suggestFromCatalog` in
+`domain/interests.ts` (pure, no AI call), always leaving out topics the profile already has and
+dismissed names. "Personalise" runs the `suggest-topics` task (effort low; interests, role and
+level are passed through `tagged()`) and replaces the AI rows in one transaction; dismissed rows
+are kept so they stay hidden. The interests themselves live in the registry, so the action reads
+them from the signed-in profile and passes them in. Starting a suggestion calls
+`TopicService.createTopic`, the normal create-topic flow.
 
 `llm_calls` holds task, provider, configured model, `started_at`, `duration_ms`,
 `api_duration_ms`, `outcome` (`ok | timeout | invalid_output | refused | auth | rate_limited |
@@ -340,6 +352,11 @@ migration against a copy of a real database (`make db-backup` first).
   clients run against fake HTTP transports. Each must parse every schema in `AI_SCHEMAS` and map
   refusals, truncation, bad output and every HTTP error class to the same friendly message,
   without leaking the key. `schema-adapter.test.ts` checks each provider's JSON Schema dialect.
+- **Topic suggestions:** `domain/interests.test.ts` covers the catalog (round-robin over
+  interests, free-text interests, exclusions); `topic-suggestion-service.test.ts` covers the
+  catalog fallback, leaving out existing topics, one `suggest-topics` row in `llm_calls`, cache
+  replacement and dismissals from both sources; `prompts.test.ts` checks every learner value in
+  the suggestions prompt is tagged.
 - **Provider smoke test:** `make smoke-provider PROVIDER=<id> TASKS=all` makes real calls for
   every schema and prints pass or fail per task. Run it after changing provider, model or prompts.
 - **Manual end-to-end:** the full flow has been run against real Claude through the browser.
@@ -355,5 +372,6 @@ Run everything with `npm run check`.
 - Answer keys are checked structurally but not independently re-solved. A verification pass
   (or running code-output snippets) is planned.
 - Prompts were written for Claude. OpenAI and Gemini pass the smoke test, but answer quality on
-  them may differ; per-provider prompt tweaks are a follow-up. API keys live in `.env.local`
-  until the Keychain-backed settings page (B14 stage 2).
+  them may differ; per-provider prompt tweaks are a follow-up.
+- Windows isn't supported: 0700 directory modes, the Claude config-dir handling and the `make`
+  tooling assume macOS or Linux (BACKLOG B16).

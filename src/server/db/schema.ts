@@ -185,6 +185,31 @@ export const llmCalls = sqliteTable(
   (table) => [index("llm_calls_started_at_idx").on(table.startedAt)],
 );
 
+/** Where a topic suggestion came from: the interest catalog or the AI. */
+export const SUGGESTION_SOURCES = ["catalog", "ai"] as const;
+export type SuggestionSource = (typeof SUGGESTION_SOURCES)[number];
+
+/**
+ * Topics suggested from the profile's interests. AI suggestions are cached
+ * here until the next "Personalise"; a dismissed suggestion (from either
+ * source) keeps its row with `dismissed_at` set so it isn't suggested again.
+ */
+export const topicSuggestions = sqliteTable(
+  "topic_suggestions",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    /** Lower-cased name, matching `topics.name_key`. */
+    nameKey: text("name_key").notNull(),
+    reason: text("reason").notNull(),
+    goal: text("goal").notNull().default(""),
+    source: text("source", { enum: SUGGESTION_SOURCES }).notNull(),
+    createdAt: timestamp("created_at").notNull(),
+    dismissedAt: timestamp("dismissed_at"),
+  },
+  (table) => [uniqueIndex("topic_suggestions_name_key_unique").on(table.nameKey)],
+);
+
 export type TopicRow = typeof topics.$inferSelect;
 export type SubtopicRow = typeof subtopics.$inferSelect;
 export type ConceptRow = typeof concepts.$inferSelect;
@@ -192,3 +217,4 @@ export type QuizRow = typeof quizzes.$inferSelect;
 export type QuestionRow = typeof questions.$inferSelect;
 export type AttemptRow = typeof attempts.$inferSelect;
 export type ReadingRow = typeof readings.$inferSelect;
+export type TopicSuggestionRow = typeof topicSuggestions.$inferSelect;
