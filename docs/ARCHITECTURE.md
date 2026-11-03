@@ -11,7 +11,8 @@ Phase 1 goals:
 - Generate focused lessons per concept.
 
 Constraints: runs only on the user's machine, uses the user's Claude subscription by default
-(an Anthropic, OpenAI or Gemini API key is optional, chosen with `AI_PROVIDER`), and has no login.
+(an Anthropic, OpenAI or Gemini API key is optional, chosen with `AI_PROVIDER`), and separates
+the people who use it with password-protected profiles.
 
 ## High-level design
 
@@ -60,8 +61,9 @@ The services cache is keyed by an AI-settings fingerprint (provider and model) a
 Pages and actions call `getProfileServices()` (`server/session.ts`) once, at the start of the
 request; the services stay bound to that profile, so a long AI call writes to the profile that
 started it. Connections and the registry live on `globalThis` to survive dev hot reloads; services
-are rebuilt from the current module code. Until sign-in lands, the resolver returns the single
-registered profile, and an install with none shows "No profile yet" (`/no-profile`).
+are rebuilt from the current module code. The profile comes from the signed-in session
+(`getCurrentSession()`, cached per request); with no valid session, `requireProfile()` redirects
+to `/login`.
 
 ## Key decisions
 
@@ -169,9 +171,30 @@ last question, the quiz completion are written in one transaction.
 
 ## Security model
 
-There's no authentication because the app only listens on the loopback interface. The
-controls that make that safe:
+The app only listens on the loopback interface, and profiles separate the people who use it.
+The controls:
 
+- **Profiles and passwords:** each profile signs in with a username and password. Passwords
+  are hashed with scrypt (N=2^15, r=8, p=1, 16-byte salt, stored as `scrypt$N$r$p$salt$hash`)
+  and compared with `timingSafeEqual`. Unknown usernames are checked against a dummy hash, so
+  timing doesn't reveal which names exist, and every wrong sign-in gets the same message. Five
+  failures lock the username for 60 s (in memory, per server process).
+- **Sessions:** a random 32-byte token in the `la_session` cookie (`httpOnly`,
+  `SameSite=Lax`, `Path=/`; not `Secure`, since the app is plain http on loopback). The
+  registry stores only the token's SHA-256. Sessions slide over 30 idle days (the proxy
+  refreshes the cookie on page loads). Signing out deletes the session; changing the password
+  deletes every other session of that profile.
+- **Every page and action checks the session:** `requireProfile()` (`server/session.ts`) runs
+  at the start of every page and server action except `/login` and `/register`, and redirects
+  to `/login` without a valid session. The proxy's redirect when there is no cookie at all is
+  only an optimisation; Next.js documents that a proxy matcher can silently miss server
+  actions. After sign-in, `?next=` is followed only if it is a same-site path (`/…`, not `//`).
+- **Profile isolation:** each profile's services hold a connection only to its own SQLite
+  file, so an id from another profile is simply not found (404).
+- **First sign-in of the upgraded profile:** `sdhiren` (data from before profiles) has no
+  password until one is set. Signing in as `sdhiren` asks "Set your password" once; until then,
+  anyone using this machine could claim it. `make profile-password USER=<name>` resets any
+  profile's password from the terminal.
 - **Network binding:** `dev` and `start` bind to `127.0.0.1` only.
 - **DNS-rebinding guard:** `src/proxy.ts` returns 403 for any `Host` other than
   `localhost`, `127.0.0.1` or `[::1]`. Without it, a malicious website could point its own
@@ -204,6 +227,49 @@ controls that make that safe:
   never spreads the request or error objects. A test runs a full flow with sentinel strings in
   the topic, goal, instructions and answer plus a fake key, and checks neither appears.
 - **Data:** `data/` and `.env*` are git-ignored.
+
+### Encryption
+
+Saved secrets (API keys and subscription tokens, added from the profile page) use envelope
+encryption with `node:crypto` only (`server/crypto/secret-box.ts`):
+
+- Each profile has a random 32-byte **data key** (DEK), created when its password is first set.
+  Secrets are sealed with AES-256-GCM under the DEK, with a random 12-byte IV and the AAD
+  `${profileId}:${kind}`, so a ciphertext can't be moved to another profile or slot.
+- The DEK is never stored in plaintext. `profiles.dek_wrapped` wraps it with a key derived by
+  scrypt from the password and `kek_salt` (separate from the password-hash salt).
+  `sessions.dek_wrapped` wraps it with HKDF-SHA256 of the **raw** session token (info
+  `la-dek-v1`). The registry only has the token's hash, so the registry file alone can't unwrap
+  it.
+- Each request unwraps the DEK from its session (`resolveSession`). It lives only in memory.
+- Changing the password re-wraps the same DEK, so saved secrets are kept. A forgotten-password
+  reset (`make profile-password`) can't recover the old DEK: it makes a new one, signs out every
+  session, deletes the profile's saved secrets and says so.
+
+### Threat model
+
+| Attacker has                                | Outcome                                                                                                     |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Another profile on the same app             | Sees none of your data: separate SQLite files, and every page and action checks the session.                |
+| A website you visit                         | Blocked by the loopback Host guard, Next.js's Origin check on actions and `SameSite=Lax`.                   |
+| A copy of `data/app.db` only                | Must guess your password offline against scrypt to read saved secrets. Tokens are hashed.                   |
+| `data/app.db` **and** a live session cookie | Can read your saved secrets. Both live under your OS account, which is the real boundary.                   |
+| Your OS account (or root)                   | Everything: profile databases are plain SQLite files. OS accounts protect files; passwords separate people. |
+| Physical access while the server runs       | Decrypted secrets sit in the server's memory while your profile's services are cached.                      |
+
+Profile passwords separate the people using one app. They don't protect the files on disk from
+someone who can log in to your OS account: use your OS account (and disk encryption) for that.
+
+### Registry tables
+
+```text
+profiles 1─* sessions               (registry: data/app.db)
+```
+
+`sessions` holds `token_hash` (SHA-256 of the cookie's token, primary key), `profile_id`
+(cascade), `dek_wrapped` (the profile's data key wrapped for this session), `created_at` and
+`expires_at`. `profiles` holds the password hash, `kek_salt` and `dek_wrapped` (see
+[Encryption](#encryption)).
 
 ## Migrations
 
