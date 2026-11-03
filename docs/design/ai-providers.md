@@ -173,23 +173,75 @@ errors use `llm.providerLabel`. An ESLint `no-restricted-syntax` rule fails `npm
 literal "Claude" string returns there. A second rule keeps each provider SDK inside its client
 file under `src/server/ai/`, and each client file may import only its own SDK.
 
-## Stage 2: settings page (unchanged plan)
+## Stage 2: per-profile settings (done, LA-9 PR 3)
 
-| Stage                    | Where the key lives                                                                | Notes                                                                         |
-| ------------------------ | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| **1. Env var (this PR)** | `AI_PROVIDER` + the provider's key in `.env.local`                                 | `.env.local` is already git-ignored. Validated by `env.ts`.                   |
-| **2. Settings page**     | **macOS Keychain** (`security add-generic-password`, service `learning-assistant`) | Never in SQLite, never in a file in the repo, never sent back to the browser. |
+| Stage                        | Where the key lives                                                                          | Notes                                                      |
+| ---------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| **1. Env var**               | `AI_PROVIDER` + the provider's key in `.env.local`                                           | Still the default for every profile that hasn't chosen.    |
+| **2. Profile → AI settings** | Registry table `profile_secrets`, AES-256-GCM under the profile's data key (macOS and Linux) | Replaces the Keychain plan. See ARCHITECTURE → Encryption. |
 
-Rules for the settings page:
+How it works (`/profile`):
 
-- **Write-only key field.** After saving, show only "Connected · key ending ••••Ab3d", with
-  Replace and Remove buttons. The key is never returned to the browser.
-- **Validate on save** with a cheap call (e.g. `models.retrieve`), mapping errors through
-  `mapProviderError`.
-- **Provider switch** across the registry's implemented providers, plus model choice.
-- **Profiles:** with profiles (B13), the provider and key are **per profile**. The Keychain
-  account is the profile id, so two people each use their own key and bill.
-- **Other platforms:** on Linux, fall back to the env var only.
+- **Per profile, no restart.** `profiles.ai_provider` / `ai_model` (null = env defaults, so
+  `sdhiren` and existing setups are unchanged). `resolveProfileAiConfig` builds the config for
+  each request; the container's cache key is a hash of provider, model and credential, so a
+  change takes effect on the next call.
+- **Write-only key field.** A new key is checked with one tiny structured call
+  (`check-credential`, not logged to `llm_calls`), sealed, and only "key ending ••••Ab3d" with
+  Remove is shown. Precedence: the saved key, then the env key. With neither,
+  `MissingKeyLlmClient` fails the call with "Add your {displayName} key in Profile → AI
+  settings" (recorded as `auth`) instead of crashing at startup.
+- **Subscription, in order:** the profile's own Claude login (Sign in with {label}), then a
+  pasted `claude setup-token` token (sealed, passed as `CLAUDE_CODE_OAUTH_TOKEN`), then this
+  machine's Claude Code login. The UI says when the machine login is used.
+
+### Sign in with Claude
+
+`server/ai/claude-login.ts` (`ClaudeLoginFlow`) drives Claude Code's own commands. We never
+call claude.ai's OAuth endpoints and no credential passes through our code.
+
+1. `start`: empties `PROFILES_DIR/<id>/claude` (mode 0700) and spawns `claude auth login`
+   with a minimal env: PATH/HOME/locale, `CLAUDE_CONFIG_DIR` for the profile, `BROWSER=true`
+   (no browser opens on the server), and no API keys or inherited `CLAUDE_CODE_OAUTH_TOKEN`.
+   It reads the `https://claude.ai/…` URL from stdout/stderr and returns `{ flowId, url }`.
+2. The page opens the URL; the user signs in with **their own** account and pastes the code.
+3. `complete`: writes the code to stdin, waits for exit 0, then runs `claude auth status`
+   with the same dir. Only a logged-in **subscription** status counts. The action then makes
+   one test query through the Agent SDK with that `CLAUDE_CONFIG_DIR`, records
+   `claude_signed_in_at`, sets the provider to `claude-code`, and returns only
+   `{ email, plan, connectedAt }`.
+4. Any failure kills the CLI and wipes the dir. One pending flow per profile (a new start
+   replaces it), 10-minute timeout. Sign out runs `claude auth logout` and deletes the dir, as
+   does `make profile-password`.
+
+Queries for a signed-in profile run with `CLAUDE_CONFIG_DIR` set (`buildAgentEnv`), any
+inherited `CLAUDE_CODE_OAUTH_TOKEN` stripped, and `pathToClaudeCodeExecutable` set to
+`CLAUDE_CLI_PATH` (default `claude`), so login and queries use the same binary. CLI output (URL,
+code, email) is never logged; tests assert it with a fake CLI.
+
+### Spike results (per platform)
+
+| Check                                                  | macOS       | Linux       |
+| ------------------------------------------------------ | ----------- | ----------- |
+| `auth login/status/logout` exist in the chosen binary  | **not run** | **not run** |
+| `CLAUDE_CONFIG_DIR` isolates the credential            | **not run** | **not run** |
+| URL on stdout and code on stdin work without a TTY     | **not run** | **not run** |
+| `auth status` output shape (JSON vs text)              | **not run** | **not run** |
+| Agent SDK query uses the profile's `CLAUDE_CONFIG_DIR` | **not run** | **not run** |
+
+The implementation session couldn't run the `claude` CLI (its sandbox needed approval for
+it), so **the spike must be done by hand before PR 3 merges**: steps 5 and 8 of the
+end-to-end checklist in the LA-9 plan. What the code assumes, and what to check:
+
+- On macOS, Claude Code keys its Keychain entry by config dir, so a profile's login doesn't
+  replace the machine login (check `claude auth status` in your own terminal afterwards). On
+  Linux, `.credentials.json` lands inside the 0700 dir.
+- `auth login` prints the URL and reads the code from a pipe. If it needs a TTY, `node-pty`
+  would be needed (a native dependency).
+- `parseAuthStatus` accepts JSON (`loggedIn`, `authMethod`, `email`, `subscriptionType`) and
+  falls back to the text form.
+- If a platform doesn't isolate, set `claudeSignInSupported()` to false for it. The pasted
+  token then becomes the main path there, and the UI hides the Sign in button.
 
 ### Cost visibility (recommended for stage 2)
 
