@@ -12,7 +12,16 @@ import { inputClasses } from "./field";
  * Catalog chips plus free text. Each chosen interest is submitted as its own
  * `interests` field, so the action reads them with `formData.getAll`.
  */
-export function InterestPicker({ initial = [], error }: { initial?: string[]; error?: string }) {
+export function InterestPicker({
+  initial = [],
+  error,
+  onChange,
+}: {
+  initial?: string[];
+  error?: string;
+  /** Called when the selection changes (chips are buttons, so no change event fires). */
+  onChange?: () => void;
+}) {
   const [selected, setSelected] = useState<string[]>(initial);
   const [draft, setDraft] = useState("");
   const full = selected.length >= MAX_INTERESTS;
@@ -21,6 +30,8 @@ export function InterestPicker({ initial = [], error }: { initial?: string[]; er
     selected.some((item) => item.toLowerCase() === value.toLowerCase());
 
   function toggle(value: string) {
+    if (!has(value) && full) return;
+    onChange?.();
     setSelected((current) =>
       has(value)
         ? current.filter((item) => item.toLowerCase() !== value.toLowerCase())
@@ -32,7 +43,10 @@ export function InterestPicker({ initial = [], error }: { initial?: string[]; er
 
   function addDraft() {
     const value = draft.trim();
-    if (value && !has(value) && !full) setSelected((current) => [...current, value]);
+    if (value && !has(value) && !full) {
+      onChange?.();
+      setSelected((current) => [...current, value]);
+    }
     setDraft("");
   }
 
