@@ -3,7 +3,7 @@
 import { Field, inputClasses } from "@/components/auth/field";
 import { InterestPicker } from "@/components/auth/interest-picker";
 import { useFormAction } from "@/components/hooks/use-form-action";
-import { Alert } from "@/components/ui/alert";
+import { FormFeedback, useDirtySince } from "@/components/ui/form-feedback";
 import { SubmitButton } from "@/components/ui/submit-button";
 import {
   NAME_MAX_LENGTH,
@@ -25,9 +25,10 @@ export interface ProfileDetails {
 export function ProfileDetailsForm({ details }: { details: ProfileDetails }) {
   const { result, formAction, pending } = useFormAction(updateProfileAction);
   const fieldErrors = result && !result.ok ? result.fieldErrors : undefined;
+  const { dirty, markDirty, onFormChange } = useDirtySince(result);
 
   return (
-    <form action={formAction} className="space-y-5" aria-busy={pending}>
+    <form action={formAction} onChange={onFormChange} className="space-y-5" aria-busy={pending}>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field id="first-name" label="First name" error={fieldErrors?.firstName}>
           <input
@@ -81,9 +82,17 @@ export function ProfileDetailsForm({ details }: { details: ProfileDetails }) {
           </select>
         </Field>
       </div>
-      <InterestPicker initial={details.interests} error={fieldErrors?.interests} />
-      {result && !result.ok && !fieldErrors && <Alert>{result.error}</Alert>}
-      {result?.ok && <p className="text-sm text-muted">Saved.</p>}
+      <InterestPicker
+        initial={details.interests}
+        error={fieldErrors?.interests}
+        onChange={markDirty}
+      />
+      <FormFeedback
+        result={result}
+        pending={pending}
+        dirty={dirty}
+        successMessage="Your details are saved."
+      />
       <SubmitButton pendingLabel="Saving…">Save details</SubmitButton>
     </form>
   );
@@ -92,9 +101,10 @@ export function ProfileDetailsForm({ details }: { details: ProfileDetails }) {
 export function ChangePasswordForm() {
   const { result, formAction, pending } = useFormAction(changePasswordAction);
   const fieldErrors = result && !result.ok ? result.fieldErrors : undefined;
+  const { dirty, onFormChange } = useDirtySince(result);
 
   return (
-    <form action={formAction} className="space-y-4" aria-busy={pending}>
+    <form action={formAction} onChange={onFormChange} className="space-y-4" aria-busy={pending}>
       <Field id="current-password" label="Current password" error={fieldErrors?.currentPassword}>
         <input
           id="current-password"
@@ -136,12 +146,12 @@ export function ChangePasswordForm() {
           />
         </Field>
       </div>
-      {result && !result.ok && !fieldErrors && <Alert>{result.error}</Alert>}
-      {result?.ok && (
-        <p className="text-sm text-muted">
-          Password changed. Other devices were signed out; your saved keys were kept.
-        </p>
-      )}
+      <FormFeedback
+        result={result}
+        pending={pending}
+        dirty={dirty}
+        successMessage="Password changed. Other devices were signed out; your saved keys were kept."
+      />
       <SubmitButton pendingLabel="Changing…">Change password</SubmitButton>
     </form>
   );

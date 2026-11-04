@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { Field, inputClasses } from "@/components/auth/field";
 import { useFormAction } from "@/components/hooks/use-form-action";
 import { Alert } from "@/components/ui/alert";
+import { FormFeedback, useDirtySince } from "@/components/ui/form-feedback";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { AI_MODEL_MAX_LENGTH, SECRET_MAX_LENGTH } from "@/domain/input-schemas";
 import {
@@ -202,11 +203,12 @@ function KeySettings(props: AiSettingsProps) {
   const [provider, setProvider] = useState(initial?.id ?? props.keyProviders[0]?.id);
   const { result, formAction, pending } = useFormAction(updateAiSettingsAction);
   const fieldErrors = result && !result.ok ? result.fieldErrors : undefined;
+  const { dirty, onFormChange } = useDirtySince(result);
   const option = props.keyProviders.find((candidate) => candidate.id === provider);
   const kind = `api_key:${provider}`;
 
   return (
-    <form action={formAction} className="space-y-4" aria-busy={pending}>
+    <form action={formAction} onChange={onFormChange} className="space-y-4" aria-busy={pending}>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field id="provider" label="Provider" error={fieldErrors?.provider}>
           <select
@@ -251,8 +253,12 @@ function KeySettings(props: AiSettingsProps) {
           className={inputClasses}
         />
       </Field>
-      {result && !result.ok && !fieldErrors && <Alert>{result.error}</Alert>}
-      {result?.ok && <p className="text-sm text-muted">Saved. Your next request uses it.</p>}
+      <FormFeedback
+        result={result}
+        pending={pending}
+        dirty={dirty}
+        successMessage="AI settings saved. Your next request uses them."
+      />
       <SubmitButton pendingLabel="Checking and saving…">Save AI settings</SubmitButton>
     </form>
   );
