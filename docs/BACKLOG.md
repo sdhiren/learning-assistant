@@ -4,7 +4,7 @@ Improvements we plan to make, picked up one at a time.
 
 **How to use it:**
 
-- New requirements go under **Requested** with the next free number (B17, B18, ...).
+- New requirements go under **Requested** with the next free number (B18, B19, ...).
 - Larger items get a design doc in `docs/design/`, linked from the item, with its open
   questions. An item is ready to build once its questions are answered.
 - When work starts, set the status to `in progress` and move a short summary to **In progress**.
@@ -103,6 +103,13 @@ Nothing in progress.
 
 ## Done
 
+- **B17 / LA-7.** CI and a migration safety net. `.github/workflows/check.yml` runs
+  `npm run check` on every PR and on pushes to `main`, and branch protection on `main` requires
+  its `check` status (admins included). `src/server/db/migrations.test.ts` fails on
+  `DROP TABLE`, `ALTER TABLE … RENAME TO` or `PRAGMA foreign_keys=OFF` in any migration outside
+  an allowlist with reasons. It also applies every profile migration one at a time to seeded
+  study data and checks that no rows are lost, with a canary showing that a rebuild would
+  cascade-delete attempts. No app or schema changes. PR link to follow.
 - **B13 / LA-9.** Profiles with isolated data, in four stacked PRs. One SQLite file per profile
   plus a registry (`data/app.db`); the pre-profiles database is profile `sdhiren`, registered in
   place. Registration at `/register`, password sign-in with hashed cookie sessions and a

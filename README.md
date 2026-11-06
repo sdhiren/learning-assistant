@@ -159,6 +159,9 @@ Run `make` to list everything.
 
 The equivalent npm scripts (`npm run dev`, `npm test`, `npm run check`, ...) also work.
 
+CI runs the same `npm run check` on every pull request and on each push to `main`. A PR can't
+merge to `main` until that `check` status is green.
+
 ## Project structure
 
 ```
