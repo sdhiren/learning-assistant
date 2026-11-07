@@ -52,7 +52,8 @@ a provider registry so OpenAI and Gemini can follow (now done: LA-2).
 
 Answer keys are AI-generated and can be wrong. A "This answer key looks wrong" button on the
 feedback panel asks Claude to re-check the question. If the key is wrong, the attempt gets full
-credit and the question is marked so it isn't reused in `recentQuestionPrompts`.
+credit and the question is marked so it isn't reused in `recentQuestionPrompts`. Until then,
+**B18** follow-ups say plainly when a key or grade looks wrong, but never change the score.
 
 ### B6. Review my mistakes — `todo` · M
 
@@ -74,12 +75,14 @@ after creation. Builds on **B2**.
 ### B9. Hints — `todo` · S
 
 An optional "Show hint" before answering. It's generated with the question and costs a little
-score (e.g. max 0.8). Must never reveal the answer key itself.
+score (e.g. max 0.8). Must never reveal the answer key itself. The penalty applies to hints
+only: **B18** pre-answer clarifications give no hints and stay free.
 
 ### B10. Mock interview mode — `todo` · L
 
 A timed session that mixes topics, hides per-question feedback until the end and finishes with
-an overall verdict and focus areas, like a real interview loop.
+an overall verdict and focus areas, like a real interview loop. It may want to turn off **B18**
+pre-answer clarifications.
 
 ### B11. Backup and export — `todo` · S
 
@@ -103,6 +106,14 @@ Nothing in progress.
 
 ## Done
 
+- **B18 / LA-10. Ask about a question or answer.** Every quiz question card has a follow-up box:
+  "Unclear? Ask about this question" before answering (the `clarify-question` prompt sees only
+  what the learner sees, never the answer key, and won't answer or hint), and "Ask a follow-up"
+  after answering or skipping (`discuss-answer`, with the key, rubric, the learner's answer and
+  feedback). The server picks the mode from whether an attempt exists. Threads are stored per
+  question in `clarifications` (migration 0006, CREATE only), capped at 10 learner messages
+  across both stages. Clarifications are free: no score penalty, unlike **B9** hints; a wrong
+  key or grade is acknowledged but not re-scored (**B4**). PR link to follow.
 - **B17 / LA-7.** CI and a migration safety net. `.github/workflows/check.yml` runs
   `npm run check` on every PR and on pushes to `main`, and branch protection on `main` requires
   its `check` status (admins included). `src/server/db/migrations.test.ts` fails on

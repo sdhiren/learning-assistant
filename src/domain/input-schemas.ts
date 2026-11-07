@@ -130,6 +130,27 @@ export type SubmitAnswerInput = z.infer<typeof submitAnswerInput>;
 
 export const finishQuizInput = z.object({ quizId: id });
 
+export const CLARIFICATION_MAX_LENGTH = 1000;
+/** Learner messages per question, shared by the before- and after-answer stages. */
+export const MAX_CLARIFICATIONS_PER_QUESTION = 10;
+
+/** A follow-up about a quiz question or its answer. Newlines are allowed. */
+export const askClarificationInput = z.object({
+  questionId: id,
+  message: z
+    .string()
+    .trim()
+    .min(1, "Type your question first.")
+    .max(
+      CLARIFICATION_MAX_LENGTH,
+      `Questions are limited to ${CLARIFICATION_MAX_LENGTH} characters.`,
+    )
+    .refine((value) => !CONTROL_CHARACTERS.test(value), {
+      message: "Contains characters that aren't allowed.",
+    }),
+});
+export type AskClarificationInput = z.infer<typeof askClarificationInput>;
+
 /** The longest answer accepted for a question type. */
 export function maxAnswerLength(type: QuestionType): number {
   return type === "coding_challenge" ? CODE_ANSWER_MAX_LENGTH : ANSWER_MAX_LENGTH;

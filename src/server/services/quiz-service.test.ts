@@ -139,7 +139,13 @@ describe("QuizService", () => {
         codeOutputQuestion(conceptIds[1]!),
         shortAnswerQuestion(conceptIds[2]!),
       ]);
-      const serialized = JSON.stringify(app.quizzes.getQuizSession(quizId));
+      app.llm.respondTo("clarify-question", { reply: "It's about flow control." });
+      const [, , shortAnswer] = app.quizzes.getQuizSession(quizId).questions;
+      await app.clarifications.ask({ questionId: shortAnswer!.id, message: "What's this about?" });
+
+      const session = app.quizzes.getQuizSession(quizId);
+      expect(session.questions[2]!.clarifications).toHaveLength(2);
+      const serialized = JSON.stringify(session);
       expect(serialized).not.toContain("correctOptionIndex");
       expect(serialized).not.toContain("Microtasks run before timers");
       expect(serialized).not.toContain("Slowing producers");

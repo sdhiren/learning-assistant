@@ -142,6 +142,34 @@ export const attempts = sqliteTable("attempts", {
   answeredAt: timestamp("answered_at").notNull(),
 });
 
+/** Who wrote a clarification message. */
+export const CLARIFICATION_ROLES = ["learner", "assistant"] as const;
+export type ClarificationRole = (typeof CLARIFICATION_ROLES)[number];
+
+/** Whether a message was sent before the question had an attempt, or after. */
+export const CLARIFICATION_STAGES = ["before_answer", "after_answer"] as const;
+export type ClarificationStage = (typeof CLARIFICATION_STAGES)[number];
+
+/**
+ * Follow-up questions about a quiz question and the AI's replies, one row per
+ * message. Replies sent before an answer exists were written without the
+ * answer key. Clarifications never affect scoring.
+ */
+export const clarifications = sqliteTable(
+  "clarifications",
+  {
+    id: text("id").primaryKey(),
+    questionId: text("question_id")
+      .notNull()
+      .references(() => questions.id, { onDelete: "cascade" }),
+    role: text("role", { enum: CLARIFICATION_ROLES }).notNull(),
+    stage: text("stage", { enum: CLARIFICATION_STAGES }).notNull(),
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at").notNull(),
+  },
+  (table) => [index("clarifications_question_idx").on(table.questionId, table.createdAt)],
+);
+
 export const readings = sqliteTable("readings", {
   id: text("id").primaryKey(),
   conceptId: text("concept_id")
@@ -216,5 +244,6 @@ export type ConceptRow = typeof concepts.$inferSelect;
 export type QuizRow = typeof quizzes.$inferSelect;
 export type QuestionRow = typeof questions.$inferSelect;
 export type AttemptRow = typeof attempts.$inferSelect;
+export type ClarificationRow = typeof clarifications.$inferSelect;
 export type ReadingRow = typeof readings.$inferSelect;
 export type TopicSuggestionRow = typeof topicSuggestions.$inferSelect;

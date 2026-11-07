@@ -1,5 +1,21 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`toProviderJsonSchema > gemini > converts clarification within the provider's keyword allowlist 1`] = `
+{
+  "additionalProperties": false,
+  "properties": {
+    "reply": {
+      "description": "Your reply to the learner: plain text, short paragraphs, '- ' for lists.",
+      "type": "string",
+    },
+  },
+  "required": [
+    "reply",
+  ],
+  "type": "object",
+}
+`;
+
 exports[`toProviderJsonSchema > gemini > converts codeReview within the provider's keyword allowlist 1`] = `
 {
   "additionalProperties": false,
@@ -351,6 +367,22 @@ exports[`toProviderJsonSchema > gemini > converts topicSuggestions within the pr
   },
   "required": [
     "suggestions",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`toProviderJsonSchema > openai > converts clarification within the provider's keyword allowlist 1`] = `
+{
+  "additionalProperties": false,
+  "properties": {
+    "reply": {
+      "description": "Your reply to the learner: plain text, short paragraphs, '- ' for lists.",
+      "type": "string",
+    },
+  },
+  "required": [
+    "reply",
   ],
   "type": "object",
 }

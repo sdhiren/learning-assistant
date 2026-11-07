@@ -14,7 +14,9 @@ import type { ZodType } from "zod";
 
 import type { LlmClient, ReasoningEffort } from "@/server/ai/llm-client";
 import {
+  buildAnswerDiscussionPrompt,
   buildCodeReviewPrompt,
+  buildQuestionClarificationPrompt,
   buildOutputGradingPrompt,
   buildQuizPrompt,
   buildReadingPrompt,
@@ -27,6 +29,7 @@ import {
 import { redactSecrets } from "@/server/ai/provider-errors";
 import { PROVIDER_IDS } from "@/server/ai/providers";
 import {
+  clarificationSchema,
   codeReviewSchema,
   generatedQuizSchema,
   newSubtopicSchema,
@@ -120,7 +123,61 @@ const CORE_TASKS: SmokeTask[] = [
   },
 ];
 
+const CLARIFY_QUESTION = {
+  topicName: TOPIC.topicName,
+  difficulty: "medium" as const,
+  conceptName: "Closures",
+  question: {
+    type: "short_answer" as const,
+    prompt: "What does a closure capture, and when is it created?",
+    code: null,
+    codeLanguage: null,
+    options: null,
+  },
+};
+
 const EXTRA_TASKS: SmokeTask[] = [
+  {
+    name: "clarify-question",
+    async run(llm) {
+      const { reply } = await call(
+        llm,
+        "clarify-question",
+        buildQuestionClarificationPrompt({
+          ...CLARIFY_QUESTION,
+          history: [],
+          message: "Does 'capture' mean values or variables? How detailed should I be?",
+        }),
+        clarificationSchema,
+        "medium",
+      );
+      return `${reply.length} chars`;
+    },
+  },
+  {
+    name: "discuss-answer",
+    async run(llm) {
+      const { reply } = await call(
+        llm,
+        "discuss-answer",
+        buildAnswerDiscussionPrompt({
+          ...CLARIFY_QUESTION,
+          correctAnswer:
+            "The variables (bindings) of its enclosing scope, when the function is created.",
+          rubric: ["Variables, not copies of values", "Created with the function"],
+          explanation: "A closure keeps a reference to its lexical environment.",
+          learnerAnswer: "It copies the values when the function is called.",
+          score: 0.2,
+          feedback: "Closures capture variables, not values, at creation time.",
+          history: [],
+          message: "Why does it matter whether it captures variables or values?",
+        }),
+        clarificationSchema,
+        "medium",
+      );
+      return `${reply.length} chars`;
+    },
+  },
   {
     name: "generate-skill-tree",
     async run(llm) {

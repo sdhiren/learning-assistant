@@ -12,9 +12,14 @@ import { detectIndent } from "@/domain/code-format";
 import { maxAnswerLength } from "@/domain/input-schemas";
 import { QUESTION_TYPE_LABELS } from "@/domain/question";
 import { submitAnswerAction } from "@/server/actions/quiz-actions";
-import type { AnswerResultView, QuizQuestionView } from "@/server/services/view-models";
+import type {
+  AnswerResultView,
+  ClarificationView,
+  QuizQuestionView,
+} from "@/server/services/view-models";
 
 import { AnswerFeedback } from "./answer-feedback";
+import { ClarificationThread } from "./clarification-thread";
 import { CodeEditor } from "./code-editor";
 import { MultipleChoiceOptions } from "./multiple-choice-options";
 import { ShortcutHint } from "./shortcut-hint";
@@ -29,6 +34,10 @@ interface QuestionCardProps {
   getTimeSpent: (questionId: string) => number;
   onTimeSpent: (questionId: string, ms: number) => void;
   onAnswered: (result: AnswerResultView) => void;
+  /** Unsent follow-up text, kept separately from the answer draft. */
+  clarificationDraft: string;
+  onClarificationDraftChange: (value: string) => void;
+  onClarified: (items: ClarificationView[]) => void;
   /** Null on the first question. */
   onPrevious: (() => void) | null;
   onSkip: () => void;
@@ -43,6 +52,9 @@ export function QuestionCard({
   getTimeSpent,
   onTimeSpent,
   onAnswered,
+  clarificationDraft,
+  onClarificationDraftChange,
+  onClarified,
   onPrevious,
   onSkip,
   onNext,
@@ -111,6 +123,16 @@ export function QuestionCard({
     onNext,
     onPrevious: pending ? null : onPrevious,
   });
+  const clarificationThread = (
+    <ClarificationThread
+      questionId={questionId}
+      answered={Boolean(result)}
+      clarifications={question.clarifications}
+      onAdded={onClarified}
+      draft={clarificationDraft}
+      onDraftChange={onClarificationDraftChange}
+    />
+  );
   const previousButton = onPrevious && (
     <Button variant="ghost" size="lg" onClick={onPrevious} disabled={pending}>
       ← Previous
@@ -258,6 +280,8 @@ export function QuestionCard({
         )}
       </form>
 
+      {!result && clarificationThread}
+
       {result && (
         <>
           <AnswerFeedback
@@ -275,6 +299,7 @@ export function QuestionCard({
             </Button>
           </div>
           <ShortcutHint keys={[["N", isLastQuestion ? "finish" : "next question"]]} />
+          {clarificationThread}
         </>
       )}
     </article>

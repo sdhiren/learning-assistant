@@ -124,6 +124,10 @@ export class QuizRepository {
     return row !== undefined;
   }
 
+  findAttempt(questionId: string): AttemptRow | undefined {
+    return this.db.select().from(attempts).where(eq(attempts.questionId, questionId)).get();
+  }
+
   listAttemptsForQuiz(quizId: string): AttemptRow[] {
     return this.db
       .select({ attempt: attempts })

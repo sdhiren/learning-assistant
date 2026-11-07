@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   addSubtopicInput,
+  askClarificationInput,
   createTopicInput,
   encodeQuizFocus,
   loginInput,
@@ -168,5 +169,34 @@ describe("submitAnswerInput", () => {
 
   it("falls back to 0 for an implausible answer time", () => {
     expect(submitAnswerInput.parse({ ...base, timeTakenMs: -5 }).timeTakenMs).toBe(0);
+  });
+});
+
+describe("askClarificationInput", () => {
+  const questionId = randomUUID();
+
+  it("trims and accepts a multi-line question", () => {
+    expect(
+      askClarificationInput.parse({ questionId, message: "  What does\n*pin down* mean?  " }),
+    ).toEqual({ questionId, message: "What does\n*pin down* mean?" });
+  });
+
+  it.each([
+    ["empty", "   "],
+    ["too long", "a".repeat(1001)],
+    ["control characters", "why\u0007?"],
+  ])("rejects a message that is %s", (_case, message) => {
+    expect(askClarificationInput.safeParse({ questionId, message }).success).toBe(false);
+  });
+
+  it("asks for a question when the message is empty", () => {
+    const result = askClarificationInput.safeParse({ questionId, message: "" });
+    expect(result.error?.issues[0]?.message).toBe("Type your question first.");
+  });
+
+  it("accepts exactly 1000 characters", () => {
+    expect(askClarificationInput.safeParse({ questionId, message: "a".repeat(1000) }).success).toBe(
+      true,
+    );
   });
 });

@@ -145,6 +145,14 @@ export const topicSuggestionsSchema = z.object({
 });
 export type TopicSuggestionsOutput = z.infer<typeof topicSuggestionsSchema>;
 
+export const clarificationSchema = z.object({
+  reply: z
+    .string()
+    .min(1)
+    .describe("Your reply to the learner: plain text, short paragraphs, '- ' for lists."),
+});
+export type ClarificationOutput = z.infer<typeof clarificationSchema>;
+
 /** Every schema sent to a model, by name. Tests and the smoke script iterate over this. */
 export const AI_SCHEMAS = {
   skillTree: skillTreeSchema,
@@ -155,5 +163,6 @@ export const AI_SCHEMAS = {
   shortAnswerGrade: shortAnswerGradeSchema,
   reading: readingSchema,
   topicSuggestions: topicSuggestionsSchema,
+  clarification: clarificationSchema,
 } as const satisfies Record<string, z.ZodType>;
 export type AiSchemaName = keyof typeof AI_SCHEMAS;

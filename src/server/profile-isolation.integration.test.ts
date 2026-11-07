@@ -67,7 +67,7 @@ async function seed(container: ProfileContainer, ref: ProfileRef) {
   llm.respondTo("generate-reading", { markdown: "## Idea\nText", keyTakeaways: ["a", "b", "c"] });
   await services.readings.generateReading({ topicId, conceptId, instructions: "" });
 
-  return { topicId, subtopicId: subtopic.id, conceptId, quizId };
+  return { topicId, subtopicId: subtopic.id, conceptId, quizId, questionId: question!.id };
 }
 
 function rowCounts(dbPath: string): Record<string, number> {
@@ -80,6 +80,7 @@ function rowCounts(dbPath: string): Record<string, number> {
     questions: schema.questions,
     attempts: schema.attempts,
     readings: schema.readings,
+    clarifications: schema.clarifications,
     llm_calls: schema.llmCalls,
   };
   const counts = Object.fromEntries(
@@ -106,6 +107,10 @@ describe("profile isolation", () => {
     );
     expect(() => servicesB.readings.getReading(ids.topicId, ids.conceptId)).toThrow(NotFoundError);
     expect(() => servicesB.quizzes.getQuizSession(ids.quizId)).toThrow(NotFoundError);
+    llm.respondTo("discuss-answer", { reply: "Leaked." });
+    await expect(
+      servicesB.clarifications.ask({ questionId: ids.questionId, message: "Why?" }),
+    ).rejects.toThrow(NotFoundError);
     expect(servicesB.topics.listTopics()).toEqual([]);
     expect(servicesB.dashboard.getDashboard().conceptCount).toBe(0);
     expect(servicesB.usage.getUsage().tasks).toEqual([]);

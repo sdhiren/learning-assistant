@@ -21,8 +21,8 @@ function nodesOf(node: Node): Node[] {
 const schemas = Object.entries(AI_SCHEMAS);
 
 describe("toProviderJsonSchema", () => {
-  it("covers all eight schemas", () => {
-    expect(schemas).toHaveLength(8);
+  it("covers all nine schemas", () => {
+    expect(schemas).toHaveLength(9);
   });
 
   describe.each(["openai", "gemini"] as const)("%s", (provider) => {

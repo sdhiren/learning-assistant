@@ -103,6 +103,7 @@ topics 1─* subtopics 1─* concepts   (skill map; positions give curriculum or
 topics 1─* quizzes 1─* questions *─1 concepts
 quizzes *─0..1 subtopics / concepts (optional quiz focus)
 questions 1─1 attempts              (one graded answer per question)
+questions 1─* clarifications        (follow-up thread per question; never affects scoring)
 concepts 1─1 readings               (latest lesson)
 llm_calls                           (one row per AI call; standalone, no foreign keys)
 topic_suggestions                   (cached AI suggestions and dismissals; standalone)
@@ -118,6 +119,11 @@ level are passed through `tagged()`) and replaces the AI rows in one transaction
 are kept so they stay hidden. The interests themselves live in the registry, so the action reads
 them from the signed-in profile and passes them in. Starting a suggestion calls
 `TopicService.createTopic`, the normal create-topic flow.
+
+`clarifications` (migration 0006, CREATE TABLE and one index only) holds one row per message:
+`question_id` (FK, `ON DELETE CASCADE`, so threads go with their question, quiz or topic),
+`role` (`learner | assistant`), `stage` (`before_answer | after_answer`), `content` and
+`created_at`, indexed on `(question_id, created_at)`. `attempts` is unchanged.
 
 `llm_calls` holds task, provider, configured model, `started_at`, `duration_ms`,
 `api_duration_ms`, `outcome` (`ok | timeout | invalid_output | refused | auth | rate_limited |
@@ -180,6 +186,28 @@ instant rules (exact, formatting-only, line-layout-only and small-typo matches);
 don't match is judged by Claude for partial understanding, capped at 90%.
 Short answers are graded by Claude against the stored rubric. The attempt and, when it was the
 last question, the quiz completion are written in one transaction.
+
+**Follow-ups (clarifications):** every question card has a follow-up box, before and after
+answering. `ClarificationService.ask` picks the mode on the server from whether the question has
+an attempt; the client can't choose it.
+
+- **No attempt (`clarify-question`):** `buildQuestionClarificationPrompt` takes a
+  `PublicQuestion` (type, prompt, code, language, options) picked field by field from the row,
+  plus topic, concept, difficulty and the thread. It has no answer-key fields, so the correct
+  option, model answer, reference solution, rubric and explanation can't reach it, and the
+  learner's unsent answer draft is never sent. The model explains wording, scope and the kind of
+  answer expected, and declines to answer, hint, judge options or judge a draft.
+- **Attempt exists (`discuss-answer`):** `buildAnswerDiscussionPrompt` adds the answer key,
+  rubric, explanation, the learner's answer (or "skipped"), score and grading feedback.
+
+Both send the last 10 messages (including pre-answer ones) and tag every value. A failed call
+stores nothing; a reply stores the learner message and reply in one transaction, with the stage
+fixed when the call started. At most 10 learner messages per question across both stages.
+Clarifications are free: they never read or write attempts or scores, so asking before
+answering carries no penalty (unlike B9's planned hints). If the key or grade looks wrong, the
+reply says so but the score stays (re-grading is B4). Threads ride on `QuizQuestionView`
+(not inside `result`, so a reply doesn't re-run the focus-to-Next effect); pre-answer replies
+were written without the key, so they are safe to send before answering.
 
 ## Security model
 
@@ -377,6 +405,12 @@ migrations, and they hold no study history.
   catalog fallback, leaving out existing topics, one `suggest-topics` row in `llm_calls`, cache
   replacement and dismissals from both sources; `prompts.test.ts` checks every learner value in
   the suggestions prompt is tagged.
+- **Clarifications:** `clarification-service.test.ts` covers both stages (no answer-key text or
+  key tags in pre-answer requests, no draft, full context afterwards, earlier turns in order),
+  persistence and the session view, a failed call storing nothing, the shared 10-message limit,
+  cascade on topic delete, one `llm_calls` row per follow-up with quiz and concept ids, and an
+  identical score with and without pre-answer clarifications. `prompts.test.ts` checks tagging
+  for both builders; profile isolation covers asking about another profile's question.
 - **Migrations:** `src/server/db/migrations.test.ts` scans every migration for table rebuilds,
   applies the profile migrations one at a time to seeded study data, and runs a canary that
   proves a rebuild cascade-deletes attempts (see [Migrations](#migrations)).
