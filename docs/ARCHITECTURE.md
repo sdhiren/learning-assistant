@@ -336,6 +336,26 @@ questions and attempts. Schema changes must use `ALTER TABLE … ADD/DROP COLUMN
 triggers. Registry migrations contain only `CREATE TABLE` and `ALTER TABLE … ADD`. Test every
 migration against a copy of a real database (`make db-backup` first).
 
+`src/server/db/migrations.test.ts` enforces this in `npm test` and CI:
+
+- **Static scan.** Every `*.sql` file in `drizzle/` and `drizzle-app/`, with comments removed,
+  must not contain `DROP TABLE`, `ALTER TABLE … RENAME TO` or `PRAGMA foreign_keys=OFF`.
+  `RENAME COLUMN`, `DROP COLUMN` and `DROP INDEX` are fine. A failure names the file and line.
+  If a drop really is safe (say, a table nothing references and with no data worth keeping), add
+  the file to `ALLOWED_REBUILDS` in the test, with the reason. Only the two `0000_init.sql` files
+  are listed today. Each journal entry must have a SQL file and each SQL file a journal entry.
+- **Seeded upgrade.** An in-memory profile database with `foreign_keys = ON` is migrated to
+  `0000_init` and seeded with topics, concepts, quizzes, questions, attempts and a reading. Every
+  later migration is then applied one at a time through the real drizzle migrator, using a
+  journal cut to the first _k_ entries. After each step the row counts and attempt ids must be
+  unchanged, and a failure names the migration just applied. The seed uses the `0000` schema,
+  so it needs no upkeep when migrations are added.
+- **Canary.** A synthetic drizzle-kit rebuild of `questions` must cascade-delete every attempt.
+  This proves the harness reproduces the hazard and can't pass trivially.
+
+The registry (`drizzle-app/`) gets only the static scan. Its child tables appear only in later
+migrations, and they hold no study history.
+
 ## Testing
 
 - **Unit tests** cover the domain (mastery, grading, concept selection, input schemas),
@@ -357,11 +377,18 @@ migration against a copy of a real database (`make db-backup` first).
   catalog fallback, leaving out existing topics, one `suggest-topics` row in `llm_calls`, cache
   replacement and dismissals from both sources; `prompts.test.ts` checks every learner value in
   the suggestions prompt is tagged.
+- **Migrations:** `src/server/db/migrations.test.ts` scans every migration for table rebuilds,
+  applies the profile migrations one at a time to seeded study data, and runs a canary that
+  proves a rebuild cascade-deletes attempts (see [Migrations](#migrations)).
 - **Provider smoke test:** `make smoke-provider PROVIDER=<id> TASKS=all` makes real calls for
   every schema and prints pass or fail per task. Run it after changing provider, model or prompts.
 - **Manual end-to-end:** the full flow has been run against real Claude through the browser.
 
-Run everything with `npm run check`.
+Run everything with `npm run check`. CI (`.github/workflows/check.yml`) runs it on every pull
+request and on each push to `main`, on Node from `.nvmrc`, with no secrets (the tests use fakes).
+Branch protection on `main` requires the job's `check` status from GitHub Actions, for admins
+too, so a PR merges only once it is green. Keep the job named `check`, and don't add `paths:` or
+`paths-ignore:` filters: a required check that never runs leaves the PR waiting forever.
 
 ## Known limitations and what to revisit
 

@@ -1,0 +1,32 @@
+# Runs `npm run check` (lint, typecheck, format check, tests) on every PR and on `main`.
+#
+# The `check` job is a required status check for merging to `main`. Don't rename the job and
+# don't add `paths:` / `paths-ignore:` filters: a required check that never reports leaves the
+# PR waiting for it forever.
+name: Check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run check

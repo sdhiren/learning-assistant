@@ -9,5 +9,5 @@
 - Validate every server action input with the zod schemas in `src/domain/input-schemas.ts`.
 - Never send answer keys to the client before a question is answered.
 - After editing `src/server/db/schema.ts`, run `npm run db:generate` and commit the migration.
-- Never ship a migration that rebuilds a table (DROP + CREATE): migrations run in one transaction where `PRAGMA foreign_keys=OFF` is ignored, so it cascade-deletes questions and attempts. Use `ALTER TABLE ADD/DROP COLUMN` (see `docs/ARCHITECTURE.md` → Migrations) and test against a copy of a real database.
-- Run `npm run check` before committing.
+- Never ship a migration that rebuilds a table (DROP + CREATE): migrations run in one transaction where `PRAGMA foreign_keys=OFF` is ignored, so it cascade-deletes questions and attempts. Use `ALTER TABLE ADD/DROP COLUMN` (see `docs/ARCHITECTURE.md` → Migrations) and test against a copy of a real database. Enforced by `src/server/db/migrations.test.ts`.
+- Run `npm run check` before committing. CI (`.github/workflows/check.yml`) runs it on every PR, and the `check` status must be green to merge to `main`. Don't rename that job or give the workflow `paths:` filters: a required check that never reports blocks every PR.
