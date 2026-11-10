@@ -37,6 +37,10 @@ key instead (see [Choosing a provider](#choosing-a-provider)).
 - **Your own subtopics.** Add a subtopic to any topic (for example "Node.js event loop
   phases"). Claude breaks it into concepts that don't duplicate your existing skill map, and you
   can quiz on the whole subtopic or any of its concepts.
+- **Ask about a question or its answer.** Before answering, "Unclear? Ask about this question"
+  explains wording, scope and what kind of answer is expected, without giving the answer away
+  and without affecting your score. After answering or skipping, ask follow-ups about the model
+  answer and your grade. Threads are saved per question (up to 10 questions each).
 - **Move freely through a quiz.** Skip a question and come back to it, go back to earlier
   questions, or jump to any question from the navigator. Unsent answers are kept. Questions still
   unanswered when you finish are marked "Skipped", reveal their answer, and count as gaps to

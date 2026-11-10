@@ -2,11 +2,13 @@ import type { GeneratedQuestion, SkillTreeOutput } from "@/server/ai/schemas";
 import { InstrumentedLlmClient } from "@/server/ai/instrumented-llm-client";
 import { createDatabase } from "@/server/db/client";
 import { llmCalls } from "@/server/db/schema";
+import { ClarificationRepository } from "@/server/repositories/clarification-repository";
 import { LlmCallRepository } from "@/server/repositories/llm-call-repository";
 import { QuizRepository } from "@/server/repositories/quiz-repository";
 import { ReadingRepository } from "@/server/repositories/reading-repository";
 import { TopicRepository } from "@/server/repositories/topic-repository";
 import { TopicSuggestionRepository } from "@/server/repositories/topic-suggestion-repository";
+import { ClarificationService } from "@/server/services/clarification-service";
 import { DashboardService } from "@/server/services/dashboard-service";
 import { ProgressService } from "@/server/services/progress-service";
 import { QuizService } from "@/server/services/quiz-service";
@@ -31,6 +33,7 @@ export function createTestApp({ providerLabel = "Claude" }: { providerLabel?: st
   const topicRepository = new TopicRepository(db);
   const quizRepository = new QuizRepository(db);
   const llmCallRepository = new LlmCallRepository(db);
+  const clarificationRepository = new ClarificationRepository(db);
   const progressService = new ProgressService(quizRepository);
   const llm = new InstrumentedLlmClient(fake, {
     provider: "claude-code",
@@ -48,7 +51,21 @@ export function createTestApp({ providerLabel = "Claude" }: { providerLabel?: st
     dashboard: new DashboardService(topicRepository, quizRepository, progressService, now),
     topics: new TopicService(topicRepository, quizRepository, progressService, llm, now),
     subtopics: new SubtopicService(topicRepository, progressService, llm),
-    quizzes: new QuizService(topicRepository, quizRepository, progressService, llm, now),
+    quizzes: new QuizService(
+      topicRepository,
+      quizRepository,
+      progressService,
+      clarificationRepository,
+      llm,
+      now,
+    ),
+    clarifications: new ClarificationService(
+      quizRepository,
+      topicRepository,
+      clarificationRepository,
+      llm,
+      now,
+    ),
     readings: new ReadingService(
       topicRepository,
       new ReadingRepository(db),

@@ -8,6 +8,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { DIFFICULTY_LABELS } from "@/domain/difficulty";
 import type {
   AnswerResultView,
+  ClarificationView,
   QuizQuestionView,
   QuizSessionView,
 } from "@/server/services/view-models";
@@ -54,6 +55,17 @@ export function QuizPlayer({ quiz }: { quiz: QuizSessionView }) {
     );
     setDrafts((previous) => ({ ...previous, [questionId]: undefined }));
     setCombo((previous) => (result.isCorrect ? previous + 1 : 0));
+  }
+
+  /** Appends a follow-up exchange; `result` is untouched, so focus stays put. */
+  function handleClarified(questionId: string, items: ClarificationView[]) {
+    setQuestions((previous) =>
+      previous.map((question) =>
+        question.id === questionId
+          ? { ...question, clarifications: [...question.clarifications, ...items] }
+          : question,
+      ),
+    );
   }
 
   /** Skip: move on to the next unanswered question, or the end screen. */
@@ -113,6 +125,11 @@ export function QuizPlayer({ quiz }: { quiz: QuizSessionView }) {
           getTimeSpent={getTimeSpent}
           onTimeSpent={addTimeSpent}
           onAnswered={(result) => handleAnswered(current.id, result)}
+          clarificationDraft={drafts[clarifyDraftKey(current.id)] ?? ""}
+          onClarificationDraftChange={(value) =>
+            setDrafts((previous) => ({ ...previous, [clarifyDraftKey(current.id)]: value }))
+          }
+          onClarified={(items) => handleClarified(current.id, items)}
           onPrevious={currentIndex > 0 ? () => setCurrentIndex(currentIndex - 1) : null}
           onSkip={skip}
           onNext={() => setCurrentIndex(currentIndex + 1)}
@@ -135,6 +152,11 @@ export function QuizPlayer({ quiz }: { quiz: QuizSessionView }) {
 function firstUnansweredIndex(questions: readonly QuizQuestionView[]): number {
   const index = questions.findIndex((question) => !question.result);
   return index === -1 ? questions.length : index;
+}
+
+/** Where a question's unsent follow-up lives in `drafts`, apart from its answer. */
+function clarifyDraftKey(questionId: string): string {
+  return `clarify:${questionId}`;
 }
 
 /** Coding challenges start from their starter code; other answers start empty. */

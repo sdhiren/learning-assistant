@@ -60,4 +60,5 @@ export const SCHEMA_FIXTURES: { [K in AiSchemaName]: z.output<(typeof AI_SCHEMAS
       (name) => ({ name, reason: "Fits your interests.", goal: "Senior backend interview" }),
     ),
   },
+  clarification: { reply: "Here, `pin down` means agree on the requirements up front." },
 };

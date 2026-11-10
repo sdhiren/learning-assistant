@@ -31,7 +31,15 @@ import {
   shortAnswerGradeSchema,
 } from "@/server/ai/schemas";
 import { isUniqueConstraintError } from "@/server/db/errors";
-import type { AttemptRow, ConceptRow, QuestionRow, QuizRow, TopicRow } from "@/server/db/schema";
+import type {
+  AttemptRow,
+  ClarificationRow,
+  ConceptRow,
+  QuestionRow,
+  QuizRow,
+  TopicRow,
+} from "@/server/db/schema";
+import type { ClarificationRepository } from "@/server/repositories/clarification-repository";
 import type { QuizRepository } from "@/server/repositories/quiz-repository";
 import type { TopicRepository } from "@/server/repositories/topic-repository";
 
@@ -40,6 +48,7 @@ import { focusLabelFor } from "./skill-map";
 import { toQuestionDraft } from "./question-validation";
 import type {
   AnswerResultView,
+  ClarificationView,
   QuizQuestionView,
   QuizSessionView,
   SubmitAnswerResultView,
@@ -56,6 +65,7 @@ export class QuizService {
     private readonly topicRepository: TopicRepository,
     private readonly quizRepository: QuizRepository,
     private readonly progressService: ProgressService,
+    private readonly clarificationRepository: ClarificationRepository,
     private readonly llm: LlmClient,
     private readonly now: () => Date = () => new Date(),
   ) {}
@@ -129,6 +139,10 @@ export class QuizService {
         .listAttemptsForQuiz(quiz.id)
         .map((attempt) => [attempt.questionId, attempt]),
     );
+    const clarificationsByQuestion = Map.groupBy(
+      this.clarificationRepository.listForQuiz(quiz.id),
+      (clarification) => clarification.questionId,
+    );
 
     return {
       id: quiz.id,
@@ -152,6 +166,10 @@ export class QuizService {
           codeLanguage: question.codeLanguage,
           options: question.options,
           result: attempt ? toAnswerResult(question, attempt) : null,
+          // Safe before answering too: those replies were written without the answer key.
+          clarifications: (clarificationsByQuestion.get(question.id) ?? []).map(
+            toClarificationView,
+          ),
         };
       }),
     };
@@ -425,11 +443,25 @@ function toQuestionRow(draft: QuestionDraft, quizId: string, position: number): 
   };
 }
 
+export function toClarificationView(row: ClarificationRow): ClarificationView {
+  return {
+    id: row.id,
+    role: row.role,
+    stage: row.stage,
+    content: row.content,
+    createdAt: row.createdAt,
+  };
+}
+
+/** The correct option's text, or the model answer, expected output or reference solution. */
+export function correctAnswerFor(question: QuestionRow): string {
+  return question.type === "multiple_choice"
+    ? (question.options?.[question.correctOptionIndex ?? -1] ?? "")
+    : (question.expectedAnswer ?? "");
+}
+
 function toAnswerResult(question: QuestionRow, attempt: AttemptRow): AnswerResultView {
-  const correctAnswer =
-    question.type === "multiple_choice"
-      ? (question.options?.[question.correctOptionIndex ?? -1] ?? "")
-      : (question.expectedAnswer ?? "");
+  const correctAnswer = correctAnswerFor(question);
   return {
     answer: attempt.answer,
     score: attempt.score,

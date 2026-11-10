@@ -3,7 +3,13 @@ import type { Difficulty } from "@/domain/difficulty";
 import type { Mastery, MasteryLevel } from "@/domain/mastery";
 import type { QuestionType } from "@/domain/question";
 import type { LlmCallOutcome } from "@/domain/usage-stats";
-import type { QuizStatus, SubtopicOrigin, SuggestionSource } from "@/server/db/schema";
+import type {
+  ClarificationRole,
+  ClarificationStage,
+  QuizStatus,
+  SubtopicOrigin,
+  SuggestionSource,
+} from "@/server/db/schema";
 
 /**
  * Data shapes passed from the server to the UI. They contain only what the
@@ -132,6 +138,16 @@ export interface AnswerResultView {
   correctAnswer: string;
 }
 
+/** One message in a question's follow-up thread. */
+export interface ClarificationView {
+  id: string;
+  role: ClarificationRole;
+  /** Whether it was sent before or after the question was answered. */
+  stage: ClarificationStage;
+  content: string;
+  createdAt: Date;
+}
+
 export interface QuizQuestionView {
   id: string;
   position: number;
@@ -144,6 +160,11 @@ export interface QuizQuestionView {
   options: string[] | null;
   /** Null until answered. */
   result: AnswerResultView | null;
+  /**
+   * Follow-ups about this question, oldest first. Kept here rather than in
+   * `result`, so a new reply doesn't replace the result object.
+   */
+  clarifications: ClarificationView[];
 }
 
 export interface QuizSessionView {

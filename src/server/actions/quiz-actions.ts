@@ -3,8 +3,17 @@
 import { redirect } from "next/navigation";
 
 import type { ActionResult } from "@/lib/action-result";
-import { finishQuizInput, startQuizInput, submitAnswerInput } from "@/domain/input-schemas";
-import type { QuizSessionView, SubmitAnswerResultView } from "@/server/services/view-models";
+import {
+  askClarificationInput,
+  finishQuizInput,
+  startQuizInput,
+  submitAnswerInput,
+} from "@/domain/input-schemas";
+import type {
+  ClarificationView,
+  QuizSessionView,
+  SubmitAnswerResultView,
+} from "@/server/services/view-models";
 import { getProfileServices } from "@/server/session";
 
 import { runAction } from "./run-action";
@@ -37,6 +46,17 @@ export async function submitAnswerAction(input: {
   const services = await getProfileServices();
   return runAction("submitAnswer", () =>
     services.quizzes.submitAnswer(submitAnswerInput.parse(input)),
+  );
+}
+
+/** Asks a follow-up about a question; returns the stored message and reply. */
+export async function askClarificationAction(input: {
+  questionId: string;
+  message: string;
+}): Promise<ActionResult<ClarificationView[]>> {
+  const services = await getProfileServices();
+  return runAction("askClarification", () =>
+    services.clarifications.ask(askClarificationInput.parse(input)),
   );
 }
 
